@@ -1,4 +1,15 @@
-# VAD Mixed-Language Fix — Handoff Notes
+# VAD & Mixed-Language — Design History
+
+> **Status: historical design note.** This document records an earlier
+> exploration that integrated Silero VAD with the `whisper-cli` code path.
+> The runtime has since moved to a long-lived `whisper-server` process, and
+> **VAD is disabled by default** in the current build (the Silero model is not
+> downloaded unless VAD is enabled). The current transcription path is a
+> single-pass request over the whole recording. This note is kept for context on
+> the dropped-segment problem and the approaches tried; see
+> [issue #4](https://github.com/FlyingFSR/friday/issues/4) for the live tracking
+> of mixed-language quality. File paths and flags below describe the older design
+> and may not match current code.
 
 ## Problem
 

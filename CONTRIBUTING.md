@@ -10,7 +10,7 @@ You'll need:
 
 - An Apple Silicon Mac running macOS 13 or later
 - A recent Swift toolchain (Xcode or the Swift command-line tools)
-- `whisper-cli` on your `PATH` (`bash scripts/setup-whisper.sh`)
+- whisper.cpp's `whisper-server` on your `PATH` (`bash scripts/setup-whisper.sh`)
 
 Then:
 

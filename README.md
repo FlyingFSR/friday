@@ -16,19 +16,19 @@ via [whisper.cpp](https://github.com/ggerganov/whisper.cpp).
 - **Fully on-device** — transcription via `whisper.cpp`; audio never leaves your machine.
 - **Paste anywhere** — text is inserted at your cursor, with clipboard restore afterward.
 - **Secure-input aware** — automatically refuses to paste into password fields and other protected contexts.
-- **Mixed-language support** — handles speech that switches between languages mid-sentence (e.g. Chinese ↔ English) via voice-activity segmentation.
+- **Early mixed-language support** — handles dictation that mixes Chinese and English, with brand/tech-term biasing and cleanup. Rapid back-and-forth switching still has rough edges (see [Known Limitations](#known-limitations)).
 - **First-run onboarding** — guided setup for permissions and model download.
 
 ## Requirements
 
 - Apple Silicon Mac (macOS 13+)
-- [`whisper-cli`](https://github.com/ggerganov/whisper.cpp) on your `PATH`
-  (or at `/opt/homebrew/bin/whisper-cli`). The packaged app bundles its own copy.
-
-Install `whisper.cpp` quickly:
+- **Downloaded release builds need nothing extra** — the app bundles its own
+  `whisper-server` and runtime libraries.
+- **Building from source** also needs whisper.cpp's `whisper-server` on your
+  `PATH` (e.g. `/opt/homebrew/bin/whisper-server`). Install it with:
 
 ```bash
-bash scripts/setup-whisper.sh   # uses Homebrew if available
+bash scripts/setup-whisper.sh   # uses Homebrew (brew install whisper-cpp) if available
 ```
 
 ## Quick Start (from source)
@@ -66,12 +66,49 @@ bash scripts/build-local-app.sh
 # Output: dist/Friday.app
 ```
 
+### Opening the Unsigned Preview Release
+
+Current release zips are unsigned preview builds. On a clean Mac, macOS may show
+"Apple could not verify Friday" and only offer **Done** or **Move to Trash**.
+For a tester build:
+
+1. Click **Done**.
+2. Open **System Settings** -> **Privacy & Security**.
+3. In **Security**, click **Open Anyway** for Friday.
+4. Confirm **Open Anyway** again, then enter the administrator password.
+
+This workaround is only for early tester builds. Public releases should move to
+Developer ID signing and notarization before claiming normal double-click
+installation.
+
 ## Models
 
 - Default model: `medium`
 - Models download to `~/Library/Application Support/Friday/models`
-- A small Silero VAD model (~885 KB) is fetched automatically on first use to
-  improve mixed-language accuracy (see [VAD_CHANGELOG.md](VAD_CHANGELOG.md))
+- Approximate download sizes: Medium ~1.5 GB; Large v3 ~3.1 GB
+- Voice-activity (VAD) segmentation is implemented but **disabled by default** in
+  the current build while its quality is validated; the Silero VAD model is only
+  downloaded if VAD is enabled (see [Known Limitations](#known-limitations), and
+  [VAD_CHANGELOG.md](VAD_CHANGELOG.md) for the design history)
+
+## Known Limitations
+
+Friday is early software. A few things are intentionally honest about their
+current state:
+
+- **Mixed-language edge cases.** Typical Chinese/English dictation works, but when
+  one recording switches between the two many times in quick succession, Whisper
+  can still drop short segments. Tracked in
+  [#4](https://github.com/FlyingFSR/friday/issues/4).
+- **VAD is off by default.** Per-segment voice-activity detection is implemented
+  end to end but disabled while its accuracy is validated, so the current path is
+  a single-pass transcription of the whole recording.
+- **Unsigned builds.** Release zips are not yet signed or notarized, so the first
+  launch needs the **Privacy & Security** -> **Security** -> **Open Anyway** flow
+  to get past Gatekeeper. Signed/notarized builds are planned.
+- **Apple Silicon only.** macOS 13+ on Apple Silicon; there is no Intel build.
+- **Medium model by default.** Large v3 is supported, but Medium is the default
+  for speed and memory.
 
 ## Distributing a Signed Build
 
@@ -122,6 +159,18 @@ swift build
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for how to get involved.
+
+## Background
+
+Friday started as a personal prototype — I wanted a fast, private way to talk to
+my Mac instead of typing, without sending my voice to anyone else's server. Over
+the past few months it's gone through several iterations — the recording and
+push-to-talk flow, the mixed Chinese/English cleanup, and the move to a local
+`whisper-server` runtime — and grown into a tool I rely on every day.
+
+It's open source because a local-first voice input tool is something more people
+than just me should be able to own, inspect, and trust. Issues and pull requests
+are welcome.
 
 ## License
 

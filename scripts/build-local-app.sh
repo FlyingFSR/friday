@@ -15,41 +15,55 @@ ICONSET_DIR="$APP_ROOT/Resources/AppIcon.iconset"
 ICON_ICNS="$APP_ROOT/Resources/Friday.icns"
 
 BUNDLE_IDENTIFIER="${FRIDAY_BUNDLE_IDENTIFIER:-com.fw.friday.local}"
-SHORT_VERSION="${FRIDAY_SHORT_VERSION:-0.1.0}"
-WHISPER_CLI_SOURCE="${FRIDAY_WHISPER_CLI_PATH:-}"
+SHORT_VERSION="${FRIDAY_SHORT_VERSION:-0.2.0}"
+# The app talks to whisper-server over HTTP at runtime, so that is the binary we
+# bundle. FRIDAY_WHISPER_SERVER_PATH overrides autodetection (default: whisper-server on PATH).
+WHISPER_SERVER_SOURCE="${FRIDAY_WHISPER_SERVER_PATH:-}"
 MEDIUM_MODEL_SOURCE="${FRIDAY_MEDIUM_MODEL_PATH:-$HOME/Library/Application Support/Friday/models/ggml-medium.bin}"
-BUNDLE_MEDIUM_MODEL="${FRIDAY_BUNDLE_MEDIUM_MODEL:-1}"
+BUNDLE_MEDIUM_MODEL="${FRIDAY_BUNDLE_MEDIUM_MODEL:-0}"
+
+sign_app_bundle_ad_hoc() {
+  local binary
+
+  while IFS= read -r -d '' binary; do
+    codesign --force --sign - "$binary"
+  done < <(find "$FRAMEWORKS_DIR" -type f -name '*.dylib' -print0)
+
+  codesign --force --sign - "$MACOS_DIR/whisper-server"
+  codesign --force --sign - "$APP_BUNDLE"
+  codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE"
+}
 
 copy_whisper_runtime() {
-  local cli_source="$1"
-  local cli_target="$MACOS_DIR/whisper-cli"
+  local server_source="$1"
+  local server_target="$MACOS_DIR/whisper-server"
 
-  if [[ -z "$cli_source" ]]; then
-    if command -v whisper-cli >/dev/null 2>&1; then
-      cli_source="$(command -v whisper-cli)"
+  if [[ -z "$server_source" ]]; then
+    if command -v whisper-server >/dev/null 2>&1; then
+      server_source="$(command -v whisper-server)"
     else
-      echo "Error: whisper-cli not found." >&2
-      echo "Install whisper.cpp first or set FRIDAY_WHISPER_CLI_PATH." >&2
+      echo "Error: whisper-server not found." >&2
+      echo "Install whisper.cpp first or set FRIDAY_WHISPER_SERVER_PATH." >&2
       exit 1
     fi
   fi
 
-  if [[ ! -x "$cli_source" ]]; then
-    echo "Error: whisper-cli source is not executable: $cli_source" >&2
+  if [[ ! -x "$server_source" ]]; then
+    echo "Error: whisper-server source is not executable: $server_source" >&2
     exit 1
   fi
 
-  echo "Bundling whisper runtime from: $cli_source"
-  cp "$cli_source" "$cli_target"
-  chmod +x "$cli_target"
+  echo "Bundling whisper runtime from: $server_source"
+  cp "$server_source" "$server_target"
+  chmod +x "$server_target"
 
   mkdir -p "$FRAMEWORKS_DIR"
 
   local lib_roots=()
-  local cli_dir
-  cli_dir="$(cd "$(dirname "$cli_source")" && pwd)"
-  lib_roots+=("$cli_dir/../libexec/lib")
-  lib_roots+=("$cli_dir/../lib")
+  local server_dir
+  server_dir="$(cd "$(dirname "$server_source")" && pwd)"
+  lib_roots+=("$server_dir/../libexec/lib")
+  lib_roots+=("$server_dir/../lib")
   lib_roots+=("/opt/homebrew/opt/whisper-cpp/libexec/lib")
   lib_roots+=("/usr/local/opt/whisper-cpp/libexec/lib")
 
@@ -57,12 +71,12 @@ copy_whisper_runtime() {
   while IFS= read -r lib_name; do
     required_libs+=("$lib_name")
   done < <(
-    otool -L "$cli_source" \
+    otool -L "$server_source" \
       | awk '/@rpath\/lib.*\.dylib/ { gsub(/.*@rpath\//, "", $1); print $1 }'
   )
 
   if [[ "${#required_libs[@]}" -eq 0 ]]; then
-    echo "Error: no whisper runtime libraries were detected from whisper-cli." >&2
+    echo "Error: no whisper runtime libraries were detected from whisper-server." >&2
     exit 1
   fi
 
@@ -88,9 +102,9 @@ copy_whisper_runtime() {
     chmod +x "$FRAMEWORKS_DIR/$lib_name"
   done
 
-  # Point whisper-cli to bundled libraries.
+  # Point whisper-server to bundled libraries.
   for lib_name in "${required_libs[@]}"; do
-    install_name_tool -change "@rpath/$lib_name" "@executable_path/../Frameworks/$lib_name" "$cli_target"
+    install_name_tool -change "@rpath/$lib_name" "@executable_path/../Frameworks/$lib_name" "$server_target"
   done
 
   # Rewrite bundled library dependencies to load sibling bundled libraries.
@@ -168,7 +182,7 @@ cp "$BIN_PATH" "$MACOS_DIR/Friday"
 chmod +x "$MACOS_DIR/Friday"
 cp "$ICON_ICNS" "$RESOURCES_DIR/Friday.icns"
 
-copy_whisper_runtime "$WHISPER_CLI_SOURCE"
+copy_whisper_runtime "$WHISPER_SERVER_SOURCE"
 bundle_medium_model
 
 BUNDLE_VERSION="$(date "+%Y%m%d%H%M%S")"
@@ -178,8 +192,23 @@ sed \
   -e "s/__SHORT_VERSION__/$SHORT_VERSION/g" \
   "$PLIST_TEMPLATE" > "$CONTENTS_DIR/Info.plist"
 
-DESIGNATED_REQ="designated => identifier \"$BUNDLE_IDENTIFIER\""
-codesign --force --deep --sign - -r="$DESIGNATED_REQ" "$APP_BUNDLE"
+# Packaging guard: the runtime execs a bundled whisper-server. Fail loudly if it
+# is missing so a broken package can never reach a release (see issue #1).
+if [[ ! -x "$MACOS_DIR/whisper-server" ]]; then
+  echo "Error: packaging guard failed — $MACOS_DIR/whisper-server is missing or not executable." >&2
+  echo "The released app would be unable to transcribe on a machine without whisper.cpp installed." >&2
+  exit 1
+fi
+
+# Packaging guard: bundled binaries must not load whisper libraries from a host
+# Homebrew/rpath location, or a fresh machine without whisper.cpp would fail.
+if otool -L "$MACOS_DIR/whisper-server" | grep -Eq '@rpath/lib(whisper|ggml)'; then
+  echo "Error: packaging guard failed — whisper-server still references @rpath whisper libraries:" >&2
+  otool -L "$MACOS_DIR/whisper-server" | grep '@rpath' >&2
+  exit 1
+fi
+
+sign_app_bundle_ad_hoc
 
 echo "Built local app bundle:"
 echo "  $APP_BUNDLE"

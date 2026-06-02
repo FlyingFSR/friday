@@ -12,6 +12,15 @@ struct ModelCatalogTests {
   }
 
   @Test
+  func catalogSizeEstimatesMatchPublishedWhisperDownloads() throws {
+    let medium = try #require(ModelCatalog.all[.medium])
+    let largeV3 = try #require(ModelCatalog.all[.largeV3])
+
+    #expect(medium.approxSizeMB == 1530)
+    #expect(largeV3.approxSizeMB == 3100)
+  }
+
+  @Test
   func defaultSettingsMatchSpec() {
     let defaults = FridaySettings.default
     #expect(defaults.hotkey == "right_command")

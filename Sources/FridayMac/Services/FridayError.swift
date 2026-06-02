@@ -8,7 +8,6 @@ enum FridayError: Error, LocalizedError {
   case recordingAlreadyActive
   case recordingNotActive
   case recordingTooShort
-  case whisperBinaryNotFound
   case transcriptionFailed(String)
   case modelNotFound
   case modelChecksumUnavailable(String)
@@ -35,8 +34,6 @@ enum FridayError: Error, LocalizedError {
       return "Recording is not active."
     case .recordingTooShort:
       return "Recording was too short."
-    case .whisperBinaryNotFound:
-      return "whisper-cli not found. Install whisper.cpp first."
     case .transcriptionFailed(let reason):
       return "Transcription failed: \(reason)"
     case .modelNotFound:

@@ -124,6 +124,70 @@ struct FridayControllerPipelineTests {
     #expect(whisperServer.lastVADModelPath == nil)
   }
 
+  @Test
+  func whisperServerStartupSkipsWhenDefaultModelIsMissing() async throws {
+    let settingsStore = MockSettingsStore()
+    settingsStore.current.installedModels = []
+    let permissionService = MockPermissionService(allGranted: true)
+    let hotkeyService = MockHotkeyService()
+    let audioCaptureService = MockAudioCaptureService()
+    let pasteService = MockPasteService()
+    let transcriptionService = MockTranscriptionService()
+    let modelManager = MockModelManager()
+    modelManager.installed = []
+    let whisperServer = MockWhisperServerManager()
+
+    let controller = makeController(
+      settingsStore: settingsStore,
+      permissionService: permissionService,
+      hotkeyService: hotkeyService,
+      audioCaptureService: audioCaptureService,
+      pasteService: pasteService,
+      transcriptionService: transcriptionService,
+      modelManager: modelManager,
+      whisperServer: whisperServer
+    )
+    controller.settings = settingsStore.current
+
+    await controller.startWhisperServerIfModelReady()
+
+    #expect(modelManager.ensureAttempts == 0)
+    #expect(whisperServer.startAttempts == 0)
+  }
+
+  @Test
+  func installModelStartsWhisperServerAfterModelBecomesReady() async throws {
+    let settingsStore = MockSettingsStore()
+    settingsStore.current.installedModels = []
+    let permissionService = MockPermissionService(allGranted: true)
+    let hotkeyService = MockHotkeyService()
+    let audioCaptureService = MockAudioCaptureService()
+    let pasteService = MockPasteService()
+    let transcriptionService = MockTranscriptionService()
+    let modelManager = MockModelManager()
+    modelManager.installed = []
+    let whisperServer = MockWhisperServerManager()
+
+    let controller = makeController(
+      settingsStore: settingsStore,
+      permissionService: permissionService,
+      hotkeyService: hotkeyService,
+      audioCaptureService: audioCaptureService,
+      pasteService: pasteService,
+      transcriptionService: transcriptionService,
+      modelManager: modelManager,
+      whisperServer: whisperServer
+    )
+    controller.settings = settingsStore.current
+
+    controller.installModel(.medium)
+    try await Task.sleep(nanoseconds: 250_000_000)
+
+    #expect(modelManager.ensureAttempts == 2)
+    #expect(whisperServer.startAttempts == 1)
+    #expect(whisperServer.lastModelPath == "/tmp/mock-model.bin")
+  }
+
   private func makeController(
     settingsStore: MockSettingsStore,
     permissionService: MockPermissionService,
@@ -279,9 +343,15 @@ private final class MockAutoLaunchService: AutoLaunchServicing {
 
 private final class MockModelManager: ModelManaging {
   var vadInstallAttempts = 0
+  var ensureAttempts = 0
+  var installed: [ModelTier] = [.medium]
 
   func ensureModelInstalled(_ tier: ModelTier) async throws -> URL {
-    URL(fileURLWithPath: "/tmp/mock-model.bin")
+    ensureAttempts += 1
+    if !installed.contains(tier) {
+      installed.append(tier)
+    }
+    return URL(fileURLWithPath: "/tmp/mock-model.bin")
   }
 
   func ensureVADModelInstalled() async throws -> URL {
@@ -290,7 +360,7 @@ private final class MockModelManager: ModelManaging {
   }
 
   func installedModels() async -> [ModelTier] {
-    [.medium]
+    installed
   }
 
   func removeModel(_ tier: ModelTier) async throws -> Bool {
@@ -313,8 +383,12 @@ private final class MockWhisperServerManager: WhisperServerManaging {
   var isReady = true
   var baseURL: URL { URL(string: "http://127.0.0.1:8178")! }
   var lastVADModelPath: String?
+  var lastModelPath: String?
+  var startAttempts = 0
 
   func start(modelPath: String, vadModelPath: String?) async throws {
+    startAttempts += 1
+    lastModelPath = modelPath
     lastVADModelPath = vadModelPath
   }
   func stop() {}

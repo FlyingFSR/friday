@@ -68,6 +68,7 @@ extension FridayController {
       do {
         _ = try await modelManager.ensureModelInstalled(tier)
         await refreshInstalledModelsFromDisk()
+        await startWhisperServerIfModelReady()
         statusMessage = "\(tier.displayName) model ready"
         pipelineState = .pasted
         hudController.show(state: .pasted, message: statusMessage, duration: nil, showsCompletionCheck: true)

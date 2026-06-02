@@ -129,7 +129,18 @@ extension FridayController {
   }
 
   func startWhisperServerIfModelReady() async {
-    let modelTier = settings.installedModels.contains(settings.defaultModel) ? settings.defaultModel : .medium
+    let candidateTier: ModelTier?
+    if settings.installedModels.contains(settings.defaultModel) {
+      candidateTier = settings.defaultModel
+    } else {
+      candidateTier = settings.installedModels.first { $0 == .medium || $0 == .largeV3 }
+    }
+
+    guard let modelTier = candidateTier else {
+      log("whisper-server not started: no installed transcription model")
+      return
+    }
+
     do {
       let modelURL = try await modelManager.ensureModelInstalled(modelTier)
       try await whisperServer.start(modelPath: modelURL.path, vadModelPath: nil)

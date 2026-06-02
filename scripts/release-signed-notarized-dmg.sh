@@ -15,6 +15,18 @@ TEAM_ID="${FRIDAY_TEAM_ID:-}"
 APPLE_ID="${FRIDAY_APPLE_ID:-}"
 APP_PASSWORD="${FRIDAY_APP_PASSWORD:-}"
 
+sign_app_bundle_with_developer_id() {
+  local binary
+
+  while IFS= read -r -d '' binary; do
+    codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$binary"
+  done < <(find "$APP_BUNDLE/Contents/Frameworks" -type f -name '*.dylib' -print0)
+
+  codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$APP_BUNDLE/Contents/MacOS/whisper-server"
+  codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$APP_BUNDLE"
+  codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE"
+}
+
 if [[ -z "$SIGN_IDENTITY" ]]; then
   cat <<'EOF'
 Missing FRIDAY_SIGN_IDENTITY.
@@ -43,8 +55,7 @@ if [[ ! -d "$APP_BUNDLE" ]]; then
 fi
 
 echo "Codesigning app bundle with hardened runtime..."
-codesign --force --deep --options runtime --timestamp --sign "$SIGN_IDENTITY" "$APP_BUNDLE"
-codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE"
+sign_app_bundle_with_developer_id
 
 echo "Creating DMG..."
 rm -f "$DMG_PATH"
