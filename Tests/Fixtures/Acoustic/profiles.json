@@ -1,0 +1,49 @@
+{
+  "profiles": [
+    {
+      "id": "clean_ref",
+      "snrDb": 60,
+      "reverbPreset": "none",
+      "bandLimitPreset": "none",
+      "clippingAmount": 0.0,
+      "tempoJitter": 0.0,
+      "boundaryShiftMs": 0
+    },
+    {
+      "id": "office_snr15_reverb_light",
+      "snrDb": 15,
+      "reverbPreset": "light",
+      "bandLimitPreset": "none",
+      "clippingAmount": 0.02,
+      "tempoJitter": 0.02,
+      "boundaryShiftMs": 0
+    },
+    {
+      "id": "cafe_snr10_reverb_medium",
+      "snrDb": 10,
+      "reverbPreset": "medium",
+      "bandLimitPreset": "none",
+      "clippingAmount": 0.03,
+      "tempoJitter": 0.03,
+      "boundaryShiftMs": 0
+    },
+    {
+      "id": "phone_bandlimit_clip_light",
+      "snrDb": 12,
+      "reverbPreset": "none",
+      "bandLimitPreset": "phone",
+      "clippingAmount": 0.05,
+      "tempoJitter": 0.015,
+      "boundaryShiftMs": 0
+    },
+    {
+      "id": "keyboard_nearfield_snr12",
+      "snrDb": 12,
+      "reverbPreset": "light",
+      "bandLimitPreset": "none",
+      "clippingAmount": 0.015,
+      "tempoJitter": 0.02,
+      "boundaryShiftMs": 0
+    }
+  ]
+}

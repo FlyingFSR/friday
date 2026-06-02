@@ -1,0 +1,7 @@
+.build/
+.swiftpm/
+.DS_Store
+dist/
+.claude/
+*.dmg
+AGENT_HANDOFF_OSS.md
