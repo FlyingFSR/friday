@@ -162,15 +162,26 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how to get involved.
 
 ## Background
 
-Friday started as a personal prototype — I wanted a fast, private way to talk to
-my Mac instead of typing, without sending my voice to anyone else's server. Over
-the past few months it's gone through several iterations — the recording and
-push-to-talk flow, the mixed Chinese/English cleanup, and the move to a local
-`whisper-server` runtime — and grown into a tool I rely on every day.
+Friday started as a private macOS prototype for a very ordinary reason: I wanted
+to dictate notes, prompts, and code-adjacent text without sending my voice to a
+cloud service or changing the app I was already working in.
 
-It's open source because a local-first voice input tool is something more people
-than just me should be able to own, inspect, and trust. Issues and pull requests
-are welcome.
+The public repository is young, but the project is not a one-day demo. Before
+opening it up, Friday went through several months of daily-use iteration: the
+menu bar app shell, hold-to-talk recording, paste-and-restore behavior,
+permission onboarding, secure-input checks, local model management, mixed
+Chinese/English cleanup, VAD experiments, and the move from a development-only
+whisper setup to a bundled `whisper-server` release package.
+
+That history is also why the README is intentionally specific about limitations.
+Friday already works well enough to be useful, but it is still early public
+software: unsigned preview releases, rough mixed-language edge cases, and some
+keyboard-compatibility work remain.
+
+It's open source because a local-first voice input tool is something people
+should be able to inspect, adapt, and trust. Issues and pull requests are
+welcome, especially from people testing it on real Macs and real dictation
+workflows.
 
 ## License
 
