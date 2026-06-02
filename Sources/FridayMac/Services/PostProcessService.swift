@@ -80,7 +80,16 @@ final class PostProcessService {
   }
 
   private func cleanupSmart(_ trimmed: String) -> String {
-    var text = replaceDictationCommands(in: trimmed)
+    // Whisper inserts line breaks at its own segment boundaries, which splits
+    // a single spoken passage across several lines. Flatten those raw newlines
+    // to spaces first; the explicit voice commands (新段落 / 换行) handled below
+    // reintroduce only the breaks the user actually asked for.
+    var text = trimmed.replacingOccurrences(
+      of: "\\s*\\n\\s*",
+      with: " ",
+      options: .regularExpression
+    )
+    text = replaceDictationCommands(in: text)
     text = normalizePersonalTerms(in: text)
     text = text.replacingOccurrences(of: "[ \\t]+", with: " ", options: .regularExpression)
     text = text.replacingOccurrences(of: " *\\n *", with: "\n", options: .regularExpression)
@@ -92,19 +101,13 @@ final class PostProcessService {
     text = normalizePunctuationForSmartMode(text)
     text = removeUnnaturalCJKSpaces(text)
     text = addConservativeChineseBreaksIfNeeded(text)
-    text = text
+    // Intentionally no terminal punctuation in smart mode: the user does not
+    // want Friday to guess sentence endings for dictated speech (especially
+    // auto-inserting a question mark from heuristics like 吗 / 是不是).
+    return text
       .replacingOccurrences(of: "[ \\t]+\\n", with: "\n", options: .regularExpression)
       .replacingOccurrences(of: "\\n[ \\t]+", with: "\n", options: .regularExpression)
       .trimmingCharacters(in: .whitespacesAndNewlines)
-
-    guard !text.isEmpty else {
-      return text
-    }
-
-    if needsTerminalPunctuation(text) {
-      text += preferredTerminalPunctuation(for: text)
-    }
-    return text
   }
 
   private func replaceDictationCommands(in text: String) -> String {
