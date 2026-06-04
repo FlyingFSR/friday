@@ -57,7 +57,7 @@ bash scripts/install-local-app.sh
 
 - Installs to `/Applications/Friday.app` (falls back to `~/Applications` if needed)
 - Launchable by double-clicking in Finder
-- Idempotent — safely overwrites a previous install
+- Idempotent — cleanly replaces a previous install
 
 Build the bundle only, without installing:
 
@@ -83,9 +83,12 @@ installation.
 
 ## Models
 
-- Default model: `medium`
+- Two models are offered: **Medium** and **Turbo** (`large-v3-turbo`)
+- **Turbo is recommended for mixed Chinese/English** — close to Large-v3 accuracy
+  on code-switching but much faster (it keeps the full large encoder and only
+  trims the decoder). Medium is lighter on memory.
 - Models download to `~/Library/Application Support/Friday/models`
-- Approximate download sizes: Medium ~1.5 GB; Large v3 ~3.1 GB
+- Approximate download sizes: Medium ~1.5 GB; Turbo ~1.6 GB
 - Voice-activity (VAD) segmentation is implemented but **disabled by default** in
   the current build while its quality is validated; the Silero VAD model is only
   downloaded if VAD is enabled (see [Known Limitations](#known-limitations), and
@@ -96,10 +99,10 @@ installation.
 Friday is early software. A few things are intentionally honest about their
 current state:
 
-- **Mixed-language edge cases.** Typical Chinese/English dictation works, but when
-  one recording switches between the two many times in quick succession, Whisper
-  can still drop short segments. Tracked in
-  [#4](https://github.com/FlyingFSR/friday/issues/4).
+- **Mixed-language edge cases.** Typical Chinese/English dictation works well on
+  Turbo, but because the whole recording is still decoded in a single pass with one
+  auto-detected language, very rapid switching can occasionally drop a short
+  segment. Tracked in [#4](https://github.com/FlyingFSR/friday/issues/4).
 - **VAD is off by default.** Per-segment voice-activity detection is implemented
   end to end but disabled while its accuracy is validated, so the current path is
   a single-pass transcription of the whole recording.
@@ -107,8 +110,9 @@ current state:
   launch needs the **Privacy & Security** -> **Security** -> **Open Anyway** flow
   to get past Gatekeeper. Signed/notarized builds are planned.
 - **Apple Silicon only.** macOS 13+ on Apple Silicon; there is no Intel build.
-- **Medium model by default.** Large v3 is supported, but Medium is the default
-  for speed and memory.
+- **Two models: Medium and Turbo.** Turbo (`large-v3-turbo`) is recommended for
+  mixed Chinese/English; Medium is lighter on memory. The older Large v3 option was
+  removed in favor of Turbo, which is similarly accurate but much faster.
 
 ## Distributing a Signed Build
 

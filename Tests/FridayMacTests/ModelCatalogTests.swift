@@ -8,16 +8,16 @@ struct ModelCatalogTests {
     #expect(ModelCatalog.all[.base] != nil)
     #expect(ModelCatalog.all[.small] != nil)
     #expect(ModelCatalog.all[.medium] != nil)
-    #expect(ModelCatalog.all[.largeV3] != nil)
+    #expect(ModelCatalog.all[.turbo] != nil)
   }
 
   @Test
   func catalogSizeEstimatesMatchPublishedWhisperDownloads() throws {
     let medium = try #require(ModelCatalog.all[.medium])
-    let largeV3 = try #require(ModelCatalog.all[.largeV3])
+    let turbo = try #require(ModelCatalog.all[.turbo])
 
     #expect(medium.approxSizeMB == 1530)
-    #expect(largeV3.approxSizeMB == 3100)
+    #expect(turbo.approxSizeMB == 1550)
   }
 
   @Test

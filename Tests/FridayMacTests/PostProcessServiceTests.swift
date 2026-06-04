@@ -5,6 +5,14 @@ struct PostProcessServiceTests {
   private let service = PostProcessService()
 
   @Test
+  func cleanupNormalizesBrandWhenGluedToChinese() {
+    #expect(service.cleanup("今天我用cloud写React组件", mode: .smart).contains("Claude"))
+    #expect(service.cleanup("我让codec跑一下", mode: .smart).contains("Codex"))
+    // Must not corrupt longer English words that merely contain the token.
+    #expect(service.cleanup("download to icloud", mode: .smart).contains("icloud"))
+  }
+
+  @Test
   func cleanupLightCollapsesWhitespaceAndAddsEnglishPunctuation() {
     let input = "  hello   world  "
     let output = service.cleanup(input, mode: .light)

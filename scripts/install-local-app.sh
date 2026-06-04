@@ -25,6 +25,10 @@ if [[ ! -d "$SOURCE_APP" ]]; then
 fi
 
 mkdir -p "$TARGET_DIR"
+if [[ -e "$TARGET_APP" ]]; then
+  echo "Replacing existing Friday app bundle cleanly..."
+  rm -rf "$TARGET_APP"
+fi
 ditto "$SOURCE_APP" "$TARGET_APP"
 
 echo "Installed:"

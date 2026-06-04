@@ -34,4 +34,20 @@ struct WhisperServerManagerTests {
     #expect(!args.contains("--vad"))
     #expect(!args.contains("-vm"))
   }
+
+  @Test
+  func orphanCleanupOnlyTargetsWhisperServerProcesses() {
+    let output = """
+    p101
+    cwhisper-server
+    p202
+    cnode
+    p303
+    cFriday
+    p404
+    cwhisper-server
+    """
+
+    #expect(WhisperServerManager.whisperServerPIDs(from: output) == [101, 404])
+  }
 }

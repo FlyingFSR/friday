@@ -61,8 +61,8 @@ kill %1
 
 - [ ] Medium model installs (download in onboarding) or a bundled model is
       detected, and the app reports it as ready.
-- [ ] Model policy shows realistic download sizes: Medium ~1.5 GB and Large v3
-      ~3.1 GB.
+- [ ] Model policy shows realistic download sizes: Medium ~1.5 GB and Turbo
+      ~1.6 GB.
 - [ ] whisper-server starts after the model is ready (no "whisper-server not
       found / failed to start" error).
 
@@ -92,7 +92,7 @@ kill %1
 
 ## 8. Version
 
-- [ ] The version shown in-app matches the release tag (e.g. `0.2.0`, not the
+- [ ] The version shown in-app matches the release tag (e.g. `0.3.0`, not the
       default build-script fallback). The publish script exports `FRIDAY_SHORT_VERSION` from the
       tag; verify it took effect.
 

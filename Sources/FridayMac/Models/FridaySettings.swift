@@ -5,6 +5,7 @@ enum ModelTier: String, Codable, CaseIterable, Identifiable {
   case small
   case medium
   case largeV3 = "large-v3"
+  case turbo = "large-v3-turbo"
 
   var id: String { rawValue }
 
@@ -18,6 +19,8 @@ enum ModelTier: String, Codable, CaseIterable, Identifiable {
       return "Medium"
     case .largeV3:
       return "Large v3"
+    case .turbo:
+      return "Turbo"
     }
   }
 }

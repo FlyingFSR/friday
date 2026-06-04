@@ -32,7 +32,11 @@ final class PostProcessService {
   /// reverse error (Claude → cloud) is far more painful.
   private func normalizeClaudeBrand(in text: String) -> String {
     // Longer variants first so "clouds" isn't partially matched as "cloud".
-    let pattern = "\\b(?:clouds|cloud|claude|claud|clode|clored|clord)\\b"
+    // Use lookarounds instead of \b: in ICU regex CJK counts as a word
+    // character, so \b fails to match when the brand word is glued directly to
+    // Chinese (e.g. "用cloud写"). Latin/digit lookarounds still avoid matching
+    // inside longer English words like "icloud" / "clouded".
+    let pattern = "(?<![A-Za-z0-9])(?:clouds|cloud|claude|claud|clode|clored|clord)(?![A-Za-z0-9])"
     return text.replacingOccurrences(
       of: pattern,
       with: "Claude",
@@ -47,7 +51,7 @@ final class PostProcessService {
   /// whenever they say anything that sounds like it.
   private func normalizeCodexBrand(in text: String) -> String {
     // Longer variants first so e.g. "codecs" isn't partially matched as "codec".
-    let pattern = "\\b(?:codecs|codec|codexes|codex|cortex|cordex|coatex|code[\\s-]*x)\\b"
+    let pattern = "(?<![A-Za-z0-9])(?:codecs|codec|codexes|codex|cortex|cordex|coatex|code[\\s-]*x)(?![A-Za-z0-9])"
     return text.replacingOccurrences(
       of: pattern,
       with: "Codex",
@@ -138,10 +142,10 @@ final class PostProcessService {
     // keep this list focused on smart-mode-only terms.
     var output = text
     let replacements = [
-      ("\\bopen\\s*ai\\b", "OpenAI"),
-      ("\\bchat\\s*(?:gpt|gbt)\\b", "ChatGPT"),
-      ("\\bmac\\s*os\\b", "macOS"),
-      ("\\bswift\\b", "Swift")
+      ("(?<![A-Za-z0-9])open\\s*ai(?![A-Za-z0-9])", "OpenAI"),
+      ("(?<![A-Za-z0-9])chat\\s*(?:gpt|gbt)(?![A-Za-z0-9])", "ChatGPT"),
+      ("(?<![A-Za-z0-9])mac\\s*os(?![A-Za-z0-9])", "macOS"),
+      ("(?<![A-Za-z0-9])swift(?![A-Za-z0-9])", "Swift")
     ]
     for (pattern, replacement) in replacements {
       output = output.replacingOccurrences(

@@ -1,9 +1,6 @@
 import Foundation
 
 extension FridayController {
-  private var largeModelInstallBackoffInterval: TimeInterval { 24 * 60 * 60 }
-  private var minimumLargeModelFreeDiskBytes: Int64 { 4 * 1024 * 1024 * 1024 }
-
   func prepareDiagnosticsLogFileIfNeeded() {
     let directory = diagnosticsLogURL.deletingLastPathComponent()
     try? fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -55,7 +52,9 @@ extension FridayController {
         settings.defaultModel = tier
       }
       settings = updated
-      log("Default model set to \(tier.rawValue)")
+      statusMessage = "Switching to \(tier.displayName)…"
+      log("Default model set to \(tier.rawValue), restarting whisper-server")
+      await startWhisperServerIfModelReady()
       updateOnboardingRequirement()
     }
   }
@@ -83,69 +82,6 @@ extension FridayController {
 
   func descriptor(for tier: ModelTier) -> ModelDescriptor? {
     ModelCatalog.all[tier]
-  }
-
-  func scheduleLargeModelInstallIfNeeded(reason: String) {
-    if settings.installedModels.contains(.largeV3) {
-      return
-    }
-    if largeModelInstallTask != nil {
-      return
-    }
-
-    let now = Date()
-    if let backoffUntil = largeModelInstallBackoffUntil, backoffUntil > now {
-      log("Skipped large-v3 auto-install (backoff active until \(backoffUntil.ISO8601Format())).")
-      return
-    }
-
-    guard hasEnoughDiskSpaceForLargeModel() else {
-      let nextAttempt = now.addingTimeInterval(largeModelInstallBackoffInterval)
-      setLargeModelInstallBackoff(until: nextAttempt)
-      log("Skipped large-v3 auto-install (low disk space). Next attempt after \(nextAttempt.ISO8601Format()).")
-      return
-    }
-
-    largeModelInstallTask = Task { [weak self] in
-      guard let self else { return }
-      self.log("Starting background large-v3 install (\(reason)).")
-      defer {
-        self.largeModelInstallTask = nil
-      }
-
-      do {
-        _ = try await self.modelManager.ensureModelInstalled(.largeV3)
-        await self.refreshInstalledModelsFromDisk()
-        self.setLargeModelInstallBackoff(until: nil)
-        self.log("Background large-v3 install completed.")
-      } catch {
-        let nextAttempt = Date().addingTimeInterval(self.largeModelInstallBackoffInterval)
-        self.setLargeModelInstallBackoff(until: nextAttempt)
-        self.log(
-          "Background large-v3 install failed: \(error.localizedDescription). " +
-          "Next attempt after \(nextAttempt.ISO8601Format())."
-        )
-      }
-    }
-  }
-
-  func hasEnoughDiskSpaceForLargeModel() -> Bool {
-    do {
-      let attributes = try fileManager.attributesOfFileSystem(forPath: NSHomeDirectory())
-      let freeBytes = attributes[.systemFreeSize] as? Int64 ?? 0
-      return freeBytes >= minimumLargeModelFreeDiskBytes
-    } catch {
-      return false
-    }
-  }
-
-  func setLargeModelInstallBackoff(until date: Date?) {
-    largeModelInstallBackoffUntil = date
-    if let date {
-      UserDefaults.standard.set(date.timeIntervalSince1970, forKey: FridayController.largeModelInstallBackoffKey)
-    } else {
-      UserDefaults.standard.removeObject(forKey: FridayController.largeModelInstallBackoffKey)
-    }
   }
 
   func log(_ message: String) {

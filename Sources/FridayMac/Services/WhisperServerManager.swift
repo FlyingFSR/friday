@@ -64,7 +64,7 @@ final class WhisperServerManager: WhisperServerManaging {
   private func killOrphanedServers() {
     let lsof = Process()
     lsof.executableURL = URL(fileURLWithPath: "/usr/sbin/lsof")
-    lsof.arguments = ["-ti", "tcp:\(port)"]
+    lsof.arguments = ["-nP", "-iTCP:\(port)", "-sTCP:LISTEN", "-F", "pc"]
     let pipe = Pipe()
     lsof.standardOutput = pipe
     lsof.standardError = FileHandle.nullDevice
@@ -75,11 +75,28 @@ final class WhisperServerManager: WhisperServerManaging {
       return
     }
     let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-    for line in output.split(separator: "\n") {
-      if let pid = Int32(line.trimmingCharacters(in: .whitespaces)) {
-        kill(pid, SIGTERM)
+    for pid in Self.whisperServerPIDs(from: output) {
+      kill(pid, SIGTERM)
+    }
+  }
+
+  static func whisperServerPIDs(from lsofOutput: String) -> [Int32] {
+    var currentPID: Int32?
+    var pids: [Int32] = []
+
+    for rawLine in lsofOutput.split(separator: "\n") {
+      let line = String(rawLine)
+      if line.hasPrefix("p") {
+        currentPID = Int32(line.dropFirst().trimmingCharacters(in: .whitespaces))
+      } else if line.hasPrefix("c") {
+        let command = String(line.dropFirst()).trimmingCharacters(in: .whitespaces)
+        if command == "whisper-server", let currentPID {
+          pids.append(currentPID)
+        }
       }
     }
+
+    return pids
   }
 
   private func resolveWhisperServerBinary() throws -> String {

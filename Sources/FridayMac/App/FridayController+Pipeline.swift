@@ -4,7 +4,6 @@ import Foundation
 extension FridayController {
   struct TranscriptionRouteDecision {
     let preferredModel: ModelTier
-    let shouldScheduleLargeInstall: Bool
     let reason: String
   }
 
@@ -314,14 +313,12 @@ extension FridayController {
     if settings.installedModels.contains(settings.defaultModel) {
       return TranscriptionRouteDecision(
         preferredModel: settings.defaultModel,
-        shouldScheduleLargeInstall: false,
         reason: "route=\(settings.defaultModel.rawValue) selected-by-user"
       )
     }
 
     return TranscriptionRouteDecision(
       preferredModel: .medium,
-      shouldScheduleLargeInstall: false,
       reason: "route=medium fallback-not-installed"
     )
   }
@@ -332,7 +329,7 @@ extension FridayController {
     routeDecision: TranscriptionRouteDecision,
     cleanupPaths: inout [String]
   ) async throws -> TranscriptionResult {
-    let primaryRequest = TranscriptionRequest(
+    let request = TranscriptionRequest(
       wavPath: wavPath,
       model: routeDecision.preferredModel,
       language: settings.transcriptionLanguage,
@@ -340,139 +337,13 @@ extension FridayController {
     )
 
     do {
-      let primaryResult = try await transcriptionService.transcribe(request: primaryRequest)
-      log("Transcription route primary=\(routeDecision.preferredModel.rawValue) reason=\(routeDecision.reason)")
-
-      guard routeDecision.preferredModel == .largeV3,
-            shouldAttemptQualityFallbackForLargeResult(
-              primaryResult,
-              recordingDuration: recordingDuration,
-              requestedLanguage: settings.transcriptionLanguage
-            ) else {
-        return primaryResult
-      }
-
-      log("Large-v3 result looks language-locked, retrying medium once for quality fallback.")
-      let fallbackRequest = TranscriptionRequest(
-        wavPath: wavPath,
-        model: .medium,
-        language: settings.transcriptionLanguage,
-        recordingDuration: recordingDuration
-      )
-
-      do {
-        let fallbackResult = try await transcriptionService.transcribe(request: fallbackRequest)
-        cleanupPaths.append(contentsOf: fallbackResult.artifactPaths)
-        let preferFallback = shouldPreferFallbackTranscription(primary: primaryResult, fallback: fallbackResult)
-        log("Large-v3 quality fallback completed: preferFallback=\(preferFallback)")
-        if preferFallback {
-          return TranscriptionResult(
-            text: fallbackResult.text,
-            detectedLanguage: fallbackResult.detectedLanguage,
-            durationMs: fallbackResult.durationMs,
-            artifactPaths: fallbackResult.artifactPaths,
-            diagnostics: primaryResult.diagnostics + ["quality-fallback=medium-selected"] + fallbackResult.diagnostics
-          )
-        }
-        return TranscriptionResult(
-          text: primaryResult.text,
-          detectedLanguage: primaryResult.detectedLanguage,
-          durationMs: primaryResult.durationMs,
-          artifactPaths: primaryResult.artifactPaths,
-          diagnostics: primaryResult.diagnostics + ["quality-fallback=medium-rejected"] + fallbackResult.diagnostics
-        )
-      } catch let fallbackFailure as TranscriptionFailure {
-        cleanupPaths.append(contentsOf: fallbackFailure.artifactPaths)
-        log("Large-v3 quality fallback failed: \(fallbackFailure.reason)")
-        return primaryResult
-      }
-    } catch let primaryFailure as TranscriptionFailure {
-      cleanupPaths.append(contentsOf: primaryFailure.artifactPaths)
-      guard routeDecision.preferredModel == .largeV3 else {
-        throw primaryFailure
-      }
-
-      log("Large-v3 route failed, retrying medium once: \(primaryFailure.reason)")
-      let fallbackRequest = TranscriptionRequest(
-        wavPath: wavPath,
-        model: .medium,
-        language: settings.transcriptionLanguage,
-        recordingDuration: recordingDuration
-      )
-
-      do {
-        let fallbackResult = try await transcriptionService.transcribe(request: fallbackRequest)
-        log("Fallback route succeeded: medium")
-        return fallbackResult
-      } catch let fallbackFailure as TranscriptionFailure {
-        cleanupPaths.append(contentsOf: fallbackFailure.artifactPaths)
-        let combinedDiagnostics = primaryFailure.diagnostics + fallbackFailure.diagnostics
-        let combinedArtifacts = Array(Set(primaryFailure.artifactPaths + fallbackFailure.artifactPaths))
-        throw TranscriptionFailure(
-          kind: fallbackFailure.kind,
-          reason: fallbackFailure.reason,
-          artifactPaths: combinedArtifacts,
-          diagnostics: combinedDiagnostics
-        )
-      }
+      let result = try await transcriptionService.transcribe(request: request)
+      log("Transcription route model=\(routeDecision.preferredModel.rawValue) reason=\(routeDecision.reason)")
+      return result
+    } catch let failure as TranscriptionFailure {
+      cleanupPaths.append(contentsOf: failure.artifactPaths)
+      throw failure
     }
   }
 
-  private func shouldAttemptQualityFallbackForLargeResult(
-    _ result: TranscriptionResult,
-    recordingDuration: TimeInterval,
-    requestedLanguage: String
-  ) -> Bool {
-    let normalizedLanguage = requestedLanguage.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-    let resolvedLanguage = normalizedLanguage.isEmpty ? "auto" : normalizedLanguage
-    guard resolvedLanguage == "auto", recordingDuration >= 25 else {
-      return false
-    }
-
-    let (cjk, latin) = scriptCharacterCounts(in: result.text)
-    if min(cjk, latin) == 0 {
-      return true
-    }
-
-    return result.diagnostics.contains { line in
-      line.contains("language-lock") || line.contains("global-en-lock") || line.contains("global-zh-lock")
-    }
-  }
-
-  private func shouldPreferFallbackTranscription(
-    primary: TranscriptionResult,
-    fallback: TranscriptionResult
-  ) -> Bool {
-    let primaryCounts = scriptCharacterCounts(in: primary.text)
-    let fallbackCounts = scriptCharacterCounts(in: fallback.text)
-    let primaryMixed = min(primaryCounts.cjk, primaryCounts.latin)
-    let fallbackMixed = min(fallbackCounts.cjk, fallbackCounts.latin)
-
-    if primaryMixed == 0, fallbackMixed >= 20 {
-      return true
-    }
-    if fallbackMixed >= primaryMixed + 12 {
-      return true
-    }
-
-    let primarySignal = primaryCounts.cjk + primaryCounts.latin
-    let fallbackSignal = fallbackCounts.cjk + fallbackCounts.latin
-    return fallbackMixed >= primaryMixed + 6 && fallbackSignal >= Int(Double(primarySignal) * 0.9)
-  }
-
-  private func scriptCharacterCounts(in text: String) -> (cjk: Int, latin: Int) {
-    var cjk = 0
-    var latin = 0
-    for scalar in text.unicodeScalars {
-      switch scalar.value {
-      case 0x4E00...0x9FFF, 0x3400...0x4DBF:
-        cjk += 1
-      case 0x0041...0x005A, 0x0061...0x007A:
-        latin += 1
-      default:
-        continue
-      }
-    }
-    return (cjk, latin)
-  }
 }

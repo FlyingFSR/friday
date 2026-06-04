@@ -35,13 +35,13 @@ enum ModelCatalog {
       downloadURL: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin",
       sha256: "6c14d5adee5f86394037b4e4e8b59f1673b6cee10e3cf0b11bbdbee79c156208"
     ),
-    .largeV3: ModelDescriptor(
-      id: .largeV3,
-      displayName: "Large v3",
-      approxSizeMB: 3100,
+    .turbo: ModelDescriptor(
+      id: .turbo,
+      displayName: "Turbo",
+      approxSizeMB: 1550,
       quality: "best",
-      downloadURL: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin",
-      sha256: "64d182b440b98d5203c4f9bd541544d84c605196c4f7b845dfa11fb23594d1e2"
+      downloadURL: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin",
+      sha256: "1fc70f774d38eb169993ac391eea357ef47c88757ef72ee5943879b7e8e2bc69"
     )
   ]
 }

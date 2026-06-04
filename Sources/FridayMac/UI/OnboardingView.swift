@@ -104,11 +104,11 @@ struct OnboardingView: View {
         .font(.system(size: 12, weight: .medium))
         .foregroundStyle(.secondary)
 
-      Text("Medium is faster. Large v3 is slower but usually more accurate on long mixed-language dictation.")
+      Text("Medium is lighter on memory. Turbo is recommended for mixed Chinese/English — close to Large-v3 accuracy but much faster.")
         .font(.system(size: 12))
         .foregroundStyle(.secondary)
 
-      ForEach([ModelTier.medium, ModelTier.largeV3]) { tier in
+      ForEach([ModelTier.medium, ModelTier.turbo]) { tier in
         if let descriptor = controller.descriptor(for: tier) {
           modelCard(tier: tier, descriptor: descriptor)
         }

@@ -29,6 +29,7 @@ extension FridayController {
 
     Task {
       settings = await settingsStore.load()
+      await migrateAwayFromLargeV3IfNeeded()
       cleanupStaleArtifactsOnBootstrap()
       refreshPermissions()
       startPermissionPolling(duration: 6)
@@ -64,8 +65,6 @@ extension FridayController {
     pendingIdleResetTask = nil
     transcriptionTask?.cancel()
     transcriptionTask = nil
-    largeModelInstallTask?.cancel()
-    largeModelInstallTask = nil
 
     if let didBecomeActiveObserver {
       NotificationCenter.default.removeObserver(didBecomeActiveObserver)
@@ -110,8 +109,26 @@ extension FridayController {
     }
   }
 
+  /// Friday no longer ships Large v3 (replaced by the faster Turbo model).
+  /// Migrate any saved default still pointing at large-v3 over to Turbo
+  /// (or Medium if Turbo isn't installed yet) and delete the obsolete ~3 GB
+  /// weight file so upgrading users reclaim the disk space.
+  func migrateAwayFromLargeV3IfNeeded() async {
+    if settings.defaultModel == .largeV3 {
+      let replacement: ModelTier = settings.installedModels.contains(.turbo) ? .turbo : .medium
+      settings = await settingsStore.update { settings in
+        settings.defaultModel = replacement
+      }
+      log("Migrated default model large-v3 -> \(replacement.rawValue)")
+    }
+
+    if (try? await modelManager.removeModel(.largeV3)) == true {
+      log("Removed obsolete large-v3 weight file from disk")
+    }
+  }
+
   func refreshInstalledModelsFromDisk() async {
-    let installed = await modelManager.installedModels().filter { $0 == .medium || $0 == .largeV3 }
+    let installed = await modelManager.installedModels().filter { $0 == .medium || $0 == .turbo }
     let updated = await settingsStore.update { settings in
       settings.installedModels = installed
       if installed.contains(settings.defaultModel) {
@@ -133,7 +150,7 @@ extension FridayController {
     if settings.installedModels.contains(settings.defaultModel) {
       candidateTier = settings.defaultModel
     } else {
-      candidateTier = settings.installedModels.first { $0 == .medium || $0 == .largeV3 }
+      candidateTier = settings.installedModels.first { $0 == .medium || $0 == .turbo }
     }
 
     guard let modelTier = candidateTier else {

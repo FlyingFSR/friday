@@ -44,10 +44,6 @@ final class FridayController: ObservableObject {
   var originApp: NSRunningApplication?
   var activeSessionID: UUID?
   var loggedInputMonitoringPreflightMismatch = false
-  var largeModelInstallTask: Task<Void, Never>?
-  var largeModelInstallBackoffUntil: Date?
-
-  static let largeModelInstallBackoffKey = "Friday.largeModelInstallBackoffUntil"
 
   convenience init() {
     self.init(dependencies: .live())
@@ -74,9 +70,6 @@ final class FridayController: ObservableObject {
       .appendingPathComponent("Logs", isDirectory: true)
       .appendingPathComponent("diagnostics.log")
     prepareDiagnosticsLogFileIfNeeded()
-    if let backoffTimestamp = UserDefaults.standard.object(forKey: Self.largeModelInstallBackoffKey) as? TimeInterval {
-      largeModelInstallBackoffUntil = Date(timeIntervalSince1970: backoffTimestamp)
-    }
 
     hotkeyService.onPress = { [weak self] in
       Task { @MainActor in

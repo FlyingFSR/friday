@@ -81,7 +81,7 @@ struct MenuContentView: View {
       Text("Model")
         .font(.system(size: 12, weight: .semibold))
 
-      ForEach([ModelTier.medium, ModelTier.largeV3]) { tier in
+      ForEach([ModelTier.medium, ModelTier.turbo]) { tier in
         if let descriptor = controller.descriptor(for: tier) {
           modelRow(tier: tier, descriptor: descriptor)
         }

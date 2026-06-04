@@ -1,11 +1,6 @@
 import Foundation
 
 final class TranscriptionService {
-  enum AutoDecodingMode: String {
-    case balanced
-    case retryConservative
-  }
-
   private let whisperServer: any WhisperServerManaging
   private let modelManager: any ModelManaging
   private static let mixedLanguagePrompt =
@@ -14,10 +9,6 @@ final class TranscriptionService {
     "今天我用 Claude 写一个 React component，然后让 Codex review 这个 pull request。" +
     "Friday 的 voice input flow 里面有 system prompt、ChatGPT、OpenAI 和 macOS Swift demo。"
 
-  private static let segmentationDurationThreshold: TimeInterval = 3.0
-  private static let minimumSegmentDuration: Double = 0.5
-  private static let silenceDetectNoise = "-30dB"
-  private static let silenceDetectDuration = "0.4"
   private static let blankAudioMarker = "[BLANK_AUDIO]"
 
   init(whisperServer: any WhisperServerManaging, modelManager: any ModelManaging) {
@@ -58,24 +49,6 @@ final class TranscriptionService {
   private func transcribeSingle(wavPath: String, language: String) async throws -> String {
     let wavData = try Data(contentsOf: URL(fileURLWithPath: wavPath))
     return try await postToServer(wavData: wavData, language: language)
-  }
-
-  private func transcribeSegments(_ segmentPaths: [String], language: String) async throws -> [String] {
-    try await withThrowingTaskGroup(of: (Int, String).self) { group in
-      for (index, path) in segmentPaths.enumerated() {
-        group.addTask {
-          let wavData = try Data(contentsOf: URL(fileURLWithPath: path))
-          let text = try await self.postToServer(wavData: wavData, language: language)
-          return (index, text)
-        }
-      }
-
-      var results = [(Int, String)]()
-      for try await result in group {
-        results.append(result)
-      }
-      return results.sorted { $0.0 < $1.0 }.map(\.1).filter { !$0.isEmpty }
-    }
   }
 
   private func postToServer(wavData: Data, language: String) async throws -> String {
@@ -221,189 +194,5 @@ final class TranscriptionService {
     body.append(Data("--\(boundary)\r\n".utf8))
     body.append(Data("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n".utf8))
     body.append(Data("\(value)\r\n".utf8))
-  }
-
-  // MARK: - Silence-based segmentation
-
-  private func splitAtSilence(wavPath: String) -> [String] {
-    guard let ffmpegPath = resolveFfmpegBinary() else {
-      return [wavPath]
-    }
-
-    let silenceTimestamps = detectSilence(ffmpegPath: ffmpegPath, wavPath: wavPath)
-    guard silenceTimestamps.count >= 1 else {
-      return [wavPath]
-    }
-
-    let splitPoints = silenceTimestamps.map { ($0.start + $0.end) / 2.0 }
-    return splitWav(ffmpegPath: ffmpegPath, wavPath: wavPath, splitPoints: splitPoints)
-  }
-
-  private struct SilenceInterval {
-    let start: Double
-    let end: Double
-  }
-
-  private func detectSilence(ffmpegPath: String, wavPath: String) -> [SilenceInterval] {
-    let process = Process()
-    process.executableURL = URL(fileURLWithPath: ffmpegPath)
-    process.arguments = [
-      "-i", wavPath,
-      "-af", "silencedetect=noise=\(Self.silenceDetectNoise):d=\(Self.silenceDetectDuration)",
-      "-f", "null", "-"
-    ]
-
-    let stderrPipe = Pipe()
-    process.standardError = stderrPipe
-    process.standardOutput = FileHandle.nullDevice
-
-    do {
-      try process.run()
-      process.waitUntilExit()
-    } catch {
-      return []
-    }
-
-    guard process.terminationStatus == 0 else { return [] }
-
-    let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
-    let stderrText = String(data: stderrData, encoding: .utf8) ?? ""
-
-    var intervals = [SilenceInterval]()
-    var currentStart: Double?
-
-    for line in stderrText.components(separatedBy: .newlines) {
-      if let range = line.range(of: "silence_start: ") {
-        let valueString = line[range.upperBound...]
-        if let spaceIndex = valueString.firstIndex(of: " ") {
-          currentStart = Double(valueString[..<spaceIndex])
-        } else {
-          currentStart = Double(valueString)
-        }
-      } else if line.contains("silence_end: "), let start = currentStart {
-        if let range = line.range(of: "silence_end: ") {
-          let rest = line[range.upperBound...]
-          if let spaceIndex = rest.firstIndex(of: " ") {
-            if let end = Double(rest[..<spaceIndex]) {
-              intervals.append(SilenceInterval(start: start, end: end))
-            }
-          } else if let end = Double(rest) {
-            intervals.append(SilenceInterval(start: start, end: end))
-          }
-        }
-        currentStart = nil
-      }
-    }
-
-    return intervals
-  }
-
-  private func splitWav(ffmpegPath: String, wavPath: String, splitPoints: [Double]) -> [String] {
-    let boundaries = [0.0] + splitPoints
-    let segments: [(start: Double, end: Double?)] = (0..<boundaries.count).map { i in
-      let start = boundaries[i]
-      let end: Double? = (i + 1 < boundaries.count) ? boundaries[i + 1] : nil
-      return (start, end)
-    }
-
-    var paths = [String]()
-    let tempDir = FileManager.default.temporaryDirectory
-
-    for (index, segment) in segments.enumerated() {
-      // Skip segments shorter than minimum duration to avoid hallucination
-      if let end = segment.end, (end - segment.start) < Self.minimumSegmentDuration {
-        continue
-      }
-
-      let outPath = tempDir.appendingPathComponent("friday-seg-\(UUID().uuidString)-\(index).wav").path
-      let process = Process()
-      process.executableURL = URL(fileURLWithPath: ffmpegPath)
-
-      var args = ["-y", "-i", wavPath, "-ss", String(format: "%.3f", segment.start)]
-      if let end = segment.end {
-        args.append(contentsOf: ["-to", String(format: "%.3f", end)])
-      }
-      args.append(contentsOf: ["-c", "copy", outPath])
-      process.arguments = args
-      process.standardOutput = FileHandle.nullDevice
-      process.standardError = FileHandle.nullDevice
-
-      do {
-        try process.run()
-        process.waitUntilExit()
-        if process.terminationStatus == 0, FileManager.default.fileExists(atPath: outPath) {
-          paths.append(outPath)
-        }
-      } catch {
-        continue
-      }
-    }
-
-    return paths.isEmpty ? [wavPath] : paths
-  }
-
-  private func resolveFfmpegBinary() -> String? {
-    let candidates = [
-      "/opt/homebrew/bin/ffmpeg",
-      "/usr/local/bin/ffmpeg"
-    ]
-    for candidate in candidates where FileManager.default.isExecutableFile(atPath: candidate) {
-      return candidate
-    }
-    return nil
-  }
-
-  // MARK: - Legacy CLI arguments (kept for test compatibility)
-
-  static func buildWhisperArguments(
-    modelPath: String,
-    wavPath: String,
-    language: String,
-    outputBasePath: String,
-    autoMode: AutoDecodingMode = .balanced,
-    promptContext: String? = nil,
-    includeJSONOutput: Bool = false
-  ) -> [String] {
-    let normalizedLanguage = language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-    let resolvedLanguage = normalizedLanguage.isEmpty ? "auto" : normalizedLanguage
-
-    var arguments = [
-      "-m", modelPath,
-      "-f", wavPath,
-      "--no-timestamps",
-      "--output-txt",
-      "--output-file", outputBasePath,
-      "--max-len", "0",
-      "-et", "2.4",
-      "-lpt", "-1.0"
-    ]
-
-    if resolvedLanguage == "auto" {
-      arguments.append(contentsOf: [
-        "-l", "auto",
-        "-sow"
-      ])
-
-      switch autoMode {
-      case .balanced:
-        arguments.append(contentsOf: [
-          "-mc", "0",
-          "--prompt", mixedLanguagePrompt
-        ])
-      case .retryConservative:
-        arguments.append(contentsOf: [
-          "-mc", "-1",
-          "--prompt", mixedLanguagePrompt
-        ])
-      }
-    } else {
-      arguments.append(contentsOf: ["-l", resolvedLanguage])
-    }
-
-    if includeJSONOutput {
-      arguments.append(contentsOf: ["-oj", "-ojf"])
-    }
-
-    return arguments
   }
 }

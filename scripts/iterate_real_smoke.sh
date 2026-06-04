@@ -233,9 +233,9 @@ consecutive_target = int(os.environ.get("CONSECUTIVE_TARGET", "2"))
 plateau_cycles = int(os.environ.get("PLATEAU_CYCLES", os.environ.get("PLATEAU_ROUNDS", "4")))
 cooldown_seconds = int(float(os.environ.get("COOLDOWN_SECONDS", "90")))
 fast_fail_per_micro_round = parse_bool(os.environ.get("FAST_FAIL_PER_MICRO_ROUND", "1"), default=True)
-required_models = [m.lower() for m in parse_csv(os.environ.get("FRIDAY_REAL_SMOKE_MODELS", "medium,large-v3"))]
+required_models = [m.lower() for m in parse_csv(os.environ.get("FRIDAY_REAL_SMOKE_MODELS", "medium,large-v3-turbo"))]
 if not required_models:
-  required_models = ["medium", "large-v3"]
+  required_models = ["medium", "large-v3-turbo"]
 acoustic_mode = os.environ.get("FRIDAY_REAL_SMOKE_ACOUSTIC_MODE", "clean").strip().lower()
 if acoustic_mode not in {"clean", "realistic"}:
   acoustic_mode = "clean"

@@ -5,78 +5,53 @@ import Testing
 @MainActor
 struct ModelRoutingPolicyTests {
   @Test
-  func selectedLargeUsesLargeWhenInstalled() {
+  func selectedMediumStaysOnMedium() {
     let controller = makeController()
-    controller.settings.defaultModel = .largeV3
-    controller.settings.installedModels = [.medium, .largeV3]
+    controller.settings.defaultModel = .medium
+    controller.settings.installedModels = [.medium, .turbo]
 
-    let route = controller.decideTranscriptionRoute(recordingDuration: 40, requestedLanguage: "auto")
-
-    #expect(route.preferredModel == .largeV3)
-    #expect(route.shouldScheduleLargeInstall == false)
+    let route = controller.decideTranscriptionRoute(recordingDuration: 50, requestedLanguage: "auto")
+    #expect(route.preferredModel == .medium)
   }
 
   @Test
-  func selectedLargeFallsBackToMediumWhenMissing() {
+  func selectedTurboUsesTurboWhenInstalled() {
+    let controller = makeController()
+    controller.settings.defaultModel = .turbo
+    controller.settings.installedModels = [.medium, .turbo]
+
+    let route = controller.decideTranscriptionRoute(recordingDuration: 40, requestedLanguage: "auto")
+    #expect(route.preferredModel == .turbo)
+  }
+
+  @Test
+  func routeFallsBackToMediumWhenDefaultNotInstalled() {
+    let controller = makeController()
+    controller.settings.defaultModel = .turbo
+    controller.settings.installedModels = [.medium]
+
+    let route = controller.decideTranscriptionRoute(recordingDuration: 40, requestedLanguage: "auto")
+    #expect(route.preferredModel == .medium)
+  }
+
+  @Test
+  func migratesLargeV3DefaultToTurboWhenInstalled() async {
+    let controller = makeController()
+    controller.settings.defaultModel = .largeV3
+    controller.settings.installedModels = [.medium, .turbo]
+
+    await controller.migrateAwayFromLargeV3IfNeeded()
+    #expect(controller.settings.defaultModel == .turbo)
+  }
+
+  @Test
+  func migratesLargeV3DefaultToMediumWhenTurboMissing() async {
     let controller = makeController()
     controller.settings.defaultModel = .largeV3
     controller.settings.installedModels = [.medium]
 
-    let route = controller.decideTranscriptionRoute(recordingDuration: 40, requestedLanguage: "auto")
-
-    #expect(route.preferredModel == .medium)
-    #expect(route.shouldScheduleLargeInstall == false)
-  }
-
-  @Test
-  func selectedMediumStaysOnMedium() {
-    let controller = makeController()
-    controller.settings.defaultModel = .medium
-    controller.settings.installedModels = [.medium, .largeV3]
-
-    let route = controller.decideTranscriptionRoute(recordingDuration: 50, requestedLanguage: "auto")
-    #expect(route.preferredModel == .medium)
-    #expect(route.shouldScheduleLargeInstall == false)
-  }
-
-  @Test
-  func largeRouteFallsBackToMediumOnce() async throws {
-    let transcriptionService = RoutingTranscriptionService()
-    transcriptionService.handler = { request in
-      if request.model == .largeV3 {
-        throw TranscriptionFailure(
-          kind: .singlePassFailed,
-          reason: "forced large failure",
-          artifactPaths: ["/tmp/large-artifact.txt"],
-          diagnostics: ["large failed"]
-        )
-      }
-
-      return TranscriptionResult(
-        text: "fallback medium result",
-        detectedLanguage: .mixed,
-        durationMs: 120
-      )
-    }
-
-    let controller = makeController(transcriptionService: transcriptionService)
-    controller.settings.transcriptionLanguage = "auto"
-
-    var cleanupPaths: [String] = []
-    let result = try await controller.transcribeWithRouting(
-      wavPath: "/tmp/fallback.wav",
-      recordingDuration: 42,
-      routeDecision: FridayController.TranscriptionRouteDecision(
-        preferredModel: .largeV3,
-        shouldScheduleLargeInstall: false,
-        reason: "test"
-      ),
-      cleanupPaths: &cleanupPaths
-    )
-
-    #expect(result.text == "fallback medium result")
-    #expect(transcriptionService.requests == [.largeV3, .medium])
-    #expect(cleanupPaths.contains("/tmp/large-artifact.txt"))
+    await controller.migrateAwayFromLargeV3IfNeeded()
+    #expect(controller.settings.defaultModel == .medium)
   }
 
   private func makeController(
