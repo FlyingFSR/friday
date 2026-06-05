@@ -97,6 +97,138 @@ struct FridayControllerPipelineTests {
   }
 
   @Test
+  func deadServerIsRestartedOnceAndTranscriptionRetried() async throws {
+    let settingsStore = MockSettingsStore()
+    let permissionService = MockPermissionService(allGranted: true)
+    let hotkeyService = MockHotkeyService()
+    let audioCaptureService = MockAudioCaptureService()
+    let pasteService = MockPasteService()
+    let transcriptionService = MockTranscriptionService()
+    let whisperServer = MockWhisperServerManager()
+
+    transcriptionService.handler = { _ in
+      // First attempt: server is dead → connection refused. After restart the
+      // retry succeeds.
+      if transcriptionService.callCount == 1 {
+        throw URLError(.cannotConnectToHost)
+      }
+      return TranscriptionResult(
+        text: "recovered text",
+        detectedLanguage: .en,
+        durationMs: 10,
+        artifactPaths: []
+      )
+    }
+
+    let controller = makeController(
+      settingsStore: settingsStore,
+      permissionService: permissionService,
+      hotkeyService: hotkeyService,
+      audioCaptureService: audioCaptureService,
+      pasteService: pasteService,
+      transcriptionService: transcriptionService,
+      whisperServer: whisperServer
+    )
+
+    hotkeyService.triggerPress()
+    hotkeyService.triggerRelease()
+
+    for _ in 0..<40 {
+      if controller.pipelineState == .pasted {
+        break
+      }
+      try await Task.sleep(nanoseconds: 50_000_000)
+    }
+
+    #expect(controller.pipelineState == .pasted)
+    #expect(whisperServer.restartAttempts == 1)
+    #expect(transcriptionService.callCount == 2)
+    #expect(pasteService.pastedText == "recovered text")
+  }
+
+  @Test
+  func transcriptionTimeoutDoesNotRestartServer() async throws {
+    let settingsStore = MockSettingsStore()
+    let permissionService = MockPermissionService(allGranted: true)
+    let hotkeyService = MockHotkeyService()
+    let audioCaptureService = MockAudioCaptureService()
+    let pasteService = MockPasteService()
+    let transcriptionService = MockTranscriptionService()
+    let whisperServer = MockWhisperServerManager()
+
+    // A timeout means the server is alive but slow; restarting it would kill a
+    // working process, so the pipeline must not recover here.
+    transcriptionService.handler = { _ in
+      throw URLError(.timedOut)
+    }
+
+    let controller = makeController(
+      settingsStore: settingsStore,
+      permissionService: permissionService,
+      hotkeyService: hotkeyService,
+      audioCaptureService: audioCaptureService,
+      pasteService: pasteService,
+      transcriptionService: transcriptionService,
+      whisperServer: whisperServer
+    )
+
+    hotkeyService.triggerPress()
+    hotkeyService.triggerRelease()
+
+    for _ in 0..<40 {
+      if controller.pipelineState == .error {
+        break
+      }
+      try await Task.sleep(nanoseconds: 50_000_000)
+    }
+
+    #expect(controller.pipelineState == .error)
+    #expect(whisperServer.restartAttempts == 0)
+    #expect(transcriptionService.callCount == 1)
+  }
+
+  @Test
+  func failedServerRestartSurfacesErrorWithoutRetry() async throws {
+    let settingsStore = MockSettingsStore()
+    let permissionService = MockPermissionService(allGranted: true)
+    let hotkeyService = MockHotkeyService()
+    let audioCaptureService = MockAudioCaptureService()
+    let pasteService = MockPasteService()
+    let transcriptionService = MockTranscriptionService()
+    let whisperServer = MockWhisperServerManager()
+    whisperServer.restartError = FridayError.whisperServerStartFailed
+
+    transcriptionService.handler = { _ in
+      throw URLError(.cannotConnectToHost)
+    }
+
+    let controller = makeController(
+      settingsStore: settingsStore,
+      permissionService: permissionService,
+      hotkeyService: hotkeyService,
+      audioCaptureService: audioCaptureService,
+      pasteService: pasteService,
+      transcriptionService: transcriptionService,
+      whisperServer: whisperServer
+    )
+
+    hotkeyService.triggerPress()
+    hotkeyService.triggerRelease()
+
+    for _ in 0..<40 {
+      if controller.pipelineState == .error {
+        break
+      }
+      try await Task.sleep(nanoseconds: 50_000_000)
+    }
+
+    #expect(controller.pipelineState == .error)
+    #expect(whisperServer.restartAttempts == 1)
+    // Restart failed, so the transcription is not retried.
+    #expect(transcriptionService.callCount == 1)
+  }
+
+  @Test
   func whisperServerStartupDoesNotEnableVADByDefault() async throws {
     let settingsStore = MockSettingsStore()
     let permissionService = MockPermissionService(allGranted: true)
@@ -370,8 +502,10 @@ private final class MockModelManager: ModelManaging {
 
 private final class MockTranscriptionService: TranscriptionServicing {
   var handler: ((TranscriptionRequest) async throws -> TranscriptionResult)?
+  private(set) var callCount = 0
 
   func transcribe(request: TranscriptionRequest) async throws -> TranscriptionResult {
+    callCount += 1
     guard let handler else {
       throw FridayError.transcriptionFailed("missing mock handler")
     }
@@ -385,12 +519,22 @@ private final class MockWhisperServerManager: WhisperServerManaging {
   var lastVADModelPath: String?
   var lastModelPath: String?
   var startAttempts = 0
+  var restartAttempts = 0
+  var restartError: Error?
 
   func start(modelPath: String, vadModelPath: String?) async throws {
     startAttempts += 1
     lastModelPath = modelPath
     lastVADModelPath = vadModelPath
   }
+
+  func restart() async throws {
+    restartAttempts += 1
+    if let restartError {
+      throw restartError
+    }
+  }
+
   func stop() {}
 }
 

@@ -10,8 +10,7 @@ struct ModelRoutingPolicyTests {
     controller.settings.defaultModel = .medium
     controller.settings.installedModels = [.medium, .turbo]
 
-    let route = controller.decideTranscriptionRoute(recordingDuration: 50, requestedLanguage: "auto")
-    #expect(route.preferredModel == .medium)
+    #expect(controller.resolveTranscriptionModel() == .medium)
   }
 
   @Test
@@ -20,8 +19,7 @@ struct ModelRoutingPolicyTests {
     controller.settings.defaultModel = .turbo
     controller.settings.installedModels = [.medium, .turbo]
 
-    let route = controller.decideTranscriptionRoute(recordingDuration: 40, requestedLanguage: "auto")
-    #expect(route.preferredModel == .turbo)
+    #expect(controller.resolveTranscriptionModel() == .turbo)
   }
 
   @Test
@@ -30,8 +28,7 @@ struct ModelRoutingPolicyTests {
     controller.settings.defaultModel = .turbo
     controller.settings.installedModels = [.medium]
 
-    let route = controller.decideTranscriptionRoute(recordingDuration: 40, requestedLanguage: "auto")
-    #expect(route.preferredModel == .medium)
+    #expect(controller.resolveTranscriptionModel() == .medium)
   }
 
   @Test
@@ -187,6 +184,7 @@ private final class RoutingWhisperServerManager: WhisperServerManaging {
   var baseURL: URL { URL(string: "http://127.0.0.1:8178")! }
 
   func start(modelPath: String, vadModelPath: String?) async throws {}
+  func restart() async throws {}
   func stop() {}
 }
 

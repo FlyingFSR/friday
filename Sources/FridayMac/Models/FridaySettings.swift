@@ -40,7 +40,6 @@ enum TextCleanupMode: String, Codable, CaseIterable {
 }
 
 struct FridaySettings: Codable {
-  var hotkey: String
   var defaultModel: ModelTier
   var installedModels: [ModelTier]
   var autoStart: Bool
@@ -51,7 +50,6 @@ struct FridaySettings: Codable {
   var transcriptionLanguage: String
 
   static let `default` = FridaySettings(
-    hotkey: "right_command",
     defaultModel: .medium,
     installedModels: [],
     autoStart: false,
@@ -64,7 +62,6 @@ struct FridaySettings: Codable {
 
   init(from decoder: Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    hotkey = try container.decode(String.self, forKey: .hotkey)
     defaultModel = try container.decode(ModelTier.self, forKey: .defaultModel)
     installedModels = try container.decode([ModelTier].self, forKey: .installedModels)
     autoStart = try container.decode(Bool.self, forKey: .autoStart)
@@ -81,7 +78,6 @@ struct FridaySettings: Codable {
   }
 
   init(
-    hotkey: String,
     defaultModel: ModelTier,
     installedModels: [ModelTier],
     autoStart: Bool,
@@ -91,7 +87,6 @@ struct FridaySettings: Codable {
     retention: String,
     transcriptionLanguage: String = "auto"
   ) {
-    self.hotkey = hotkey
     self.defaultModel = defaultModel
     self.installedModels = installedModels
     self.autoStart = autoStart

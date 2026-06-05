@@ -23,7 +23,6 @@ struct ModelCatalogTests {
   @Test
   func defaultSettingsMatchSpec() {
     let defaults = FridaySettings.default
-    #expect(defaults.hotkey == "right_command")
     #expect(defaults.defaultModel == .medium)
     #expect(defaults.textCleanup == .smart)
     #expect(defaults.pasteRestoreClipboard)

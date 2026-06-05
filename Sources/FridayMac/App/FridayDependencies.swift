@@ -68,6 +68,9 @@ protocol WhisperServerManaging: AnyObject {
   var isReady: Bool { get }
   var baseURL: URL { get }
   func start(modelPath: String, vadModelPath: String?) async throws
+  /// Relaunch the server using the most recent successful launch arguments.
+  /// Used to recover when the running server process has died mid-session.
+  func restart() async throws
   func stop()
 }
 

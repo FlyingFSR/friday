@@ -189,6 +189,7 @@ private final class AutoStartMockWhisperServerManager: WhisperServerManaging {
   var baseURL: URL { URL(string: "http://127.0.0.1:8178")! }
 
   func start(modelPath: String, vadModelPath: String?) async throws {}
+  func restart() async throws {}
   func stop() {}
 }
 

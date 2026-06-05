@@ -2,11 +2,6 @@ import AppKit
 import Foundation
 
 extension FridayController {
-  struct TranscriptionRouteDecision {
-    let preferredModel: ModelTier
-    let reason: String
-  }
-
   func handleHotkeyDown() {
     guard pipelineState == .idle || pipelineState == .pasted || pipelineState == .error else {
       return
@@ -85,30 +80,31 @@ extension FridayController {
         }
 
         do {
-          let routeDecision = self.decideTranscriptionRoute(
-            recordingDuration: recording.duration,
-            requestedLanguage: self.settings.transcriptionLanguage
-          )
+          let model = self.resolveTranscriptionModel()
 
           let transcription: TranscriptionResult
           do {
-            transcription = try await self.transcribeWithRouting(
+            let request = TranscriptionRequest(
               wavPath: wavPath,
-              recordingDuration: recording.duration,
-              routeDecision: routeDecision,
-              cleanupPaths: &cleanupPaths
+              model: model,
+              language: self.settings.transcriptionLanguage
             )
+            transcription = try await self.transcribeRecoveringFromServerDeath(
+              request: request,
+              sessionID: sessionID
+            )
+            self.log("Transcription route model=\(model.rawValue)")
             cleanupPaths.append(contentsOf: transcription.artifactPaths)
             if !transcription.diagnostics.isEmpty {
               self.log("Transcription diagnostics: \(transcription.diagnostics.joined(separator: " | "))")
             }
           } catch let failure as TranscriptionFailure {
             cleanupPaths.append(contentsOf: failure.artifactPaths)
-            self.log("Transcription failure kind=\(failure.kind.rawValue) reason=\(failure.reason)")
+            self.log("Transcription failure reason=\(failure.reason)")
             if !failure.diagnostics.isEmpty {
               self.log("Transcription diagnostics: \(failure.diagnostics.joined(separator: " | "))")
             }
-            throw FridayError.transcriptionFailed(self.userFacingTranscriptionMessage(for: failure))
+            throw FridayError.transcriptionFailed(failure.reason)
           }
 
           guard self.isSessionActive(sessionID) else {
@@ -271,23 +267,6 @@ extension FridayController {
     try? fileManager.removeItem(atPath: path)
   }
 
-  func userFacingTranscriptionMessage(for failure: TranscriptionFailure) -> String {
-    switch failure.kind {
-    case .chunkRetryFailed:
-      return "Chunk retry failed."
-    case .fallbackBudgetExceeded:
-      return "Fallback recovery exceeded its time budget."
-    case .singlePassFailed:
-      return "Single-pass fallback failed."
-    case .chunkingFailed:
-      return "Chunked transcription failed."
-    case .cancelled:
-      return "Transcription was cancelled."
-    case .unknown:
-      return failure.reason
-    }
-  }
-
   func ensureContinuousCaptureReady() throws {
     if !audioCaptureService.isContinuousCaptureRunning {
       try audioCaptureService.startContinuousCapture()
@@ -303,46 +282,52 @@ extension FridayController {
     }
   }
 
-  func decideTranscriptionRoute(
-    recordingDuration: TimeInterval,
-    requestedLanguage: String
-  ) -> TranscriptionRouteDecision {
-    let _ = recordingDuration
-    let _ = requestedLanguage
-
+  func resolveTranscriptionModel() -> ModelTier {
     if settings.installedModels.contains(settings.defaultModel) {
-      return TranscriptionRouteDecision(
-        preferredModel: settings.defaultModel,
-        reason: "route=\(settings.defaultModel.rawValue) selected-by-user"
-      )
+      return settings.defaultModel
     }
-
-    return TranscriptionRouteDecision(
-      preferredModel: .medium,
-      reason: "route=medium fallback-not-installed"
-    )
+    return .medium
   }
 
-  func transcribeWithRouting(
-    wavPath: String,
-    recordingDuration: TimeInterval,
-    routeDecision: TranscriptionRouteDecision,
-    cleanupPaths: inout [String]
+  /// Transcribe, recovering once if whisper-server has died mid-session.
+  ///
+  /// `isReady` is set when the server boots and is never re-checked, so a server
+  /// that crashed after startup still looks "ready" and the POST fails at the
+  /// socket. We treat only connection-level failures as recoverable: restart the
+  /// server once and retry a single time. Timeouts and HTTP errors are excluded
+  /// on purpose — the server is alive (just slow, or the request was rejected),
+  /// so restarting would kill a working process for nothing.
+  func transcribeRecoveringFromServerDeath(
+    request: TranscriptionRequest,
+    sessionID: UUID
   ) async throws -> TranscriptionResult {
-    let request = TranscriptionRequest(
-      wavPath: wavPath,
-      model: routeDecision.preferredModel,
-      language: settings.transcriptionLanguage,
-      recordingDuration: recordingDuration
-    )
-
     do {
-      let result = try await transcriptionService.transcribe(request: request)
-      log("Transcription route model=\(routeDecision.preferredModel.rawValue) reason=\(routeDecision.reason)")
-      return result
-    } catch let failure as TranscriptionFailure {
-      cleanupPaths.append(contentsOf: failure.artifactPaths)
-      throw failure
+      return try await transcriptionService.transcribe(request: request)
+    } catch let error where Self.isRecoverableServerConnectionError(error) {
+      log("whisper-server unreachable (\(error.localizedDescription)); restarting once and retrying")
+      if isSessionActive(sessionID) {
+        statusMessage = "Restarting engine…"
+        hudController.show(
+          state: .transcribing,
+          message: statusMessage,
+          duration: nil,
+          showsCompletionCheck: false
+        )
+      }
+      try await whisperServer.restart()
+      return try await transcriptionService.transcribe(request: request)
+    }
+  }
+
+  nonisolated static func isRecoverableServerConnectionError(_ error: Error) -> Bool {
+    guard let urlError = error as? URLError else {
+      return false
+    }
+    switch urlError.code {
+    case .cannotConnectToHost, .networkConnectionLost:
+      return true
+    default:
+      return false
     }
   }
 

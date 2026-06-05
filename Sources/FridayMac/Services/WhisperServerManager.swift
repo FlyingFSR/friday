@@ -4,12 +4,31 @@ final class WhisperServerManager: WhisperServerManaging {
   private var process: Process?
   private let port: Int = 8178
   private(set) var isReady = false
+  // Remembered after a successful launch so restart() can recover the server
+  // without re-deriving (and re-checksumming) the model path. Mutated only from
+  // the launch path, which callers invoke from the main actor.
+  private var lastModelPath: String?
+  private var lastVADModelPath: String?
 
   var baseURL: URL {
     URL(string: "http://127.0.0.1:\(port)")!
   }
 
   func start(modelPath: String, vadModelPath: String? = nil) async throws {
+    try await launch(modelPath: modelPath, vadModelPath: vadModelPath, timeout: 30)
+  }
+
+  func restart() async throws {
+    guard let lastModelPath else {
+      throw FridayError.whisperServerStartFailed
+    }
+    // Tighter timeout than a cold start: the model was just resident, so a warm
+    // relaunch is fast, and a stuck recovery should fail quickly rather than
+    // leave the user staring at the HUD.
+    try await launch(modelPath: lastModelPath, vadModelPath: lastVADModelPath, timeout: 20)
+  }
+
+  private func launch(modelPath: String, vadModelPath: String?, timeout: TimeInterval) async throws {
     stop()
     killOrphanedServers()
 
@@ -28,7 +47,9 @@ final class WhisperServerManager: WhisperServerManaging {
     try proc.run()
     process = proc
 
-    try await waitUntilReady(timeout: 30)
+    try await waitUntilReady(timeout: timeout)
+    lastModelPath = modelPath
+    lastVADModelPath = vadModelPath
   }
 
   func stop() {

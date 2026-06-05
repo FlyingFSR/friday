@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.3.1 - 2026-06-05
+
+### Reliability
+
+- **whisper-server now recovers if it dies mid-session.** `isReady` was set once at
+  startup and never re-checked, so if the transcription engine crashed after boot,
+  every later dictation failed until Friday was relaunched. The pipeline now detects
+  a dropped connection, restarts the server once, and retries the transcription a
+  single time. Timeouts and HTTP errors deliberately do **not** trigger a restart
+  (the server is alive, just slow), so a working transcription is never killed.
+
+### Internal cleanup
+
+- Removed dead transcription routing/failure scaffolding left over from the
+  rolled-back chunked-transcription experiment (the unused per-request
+  `recordingDuration`, the no-op routing wrapper, and the unreachable
+  `TranscriptionFailureKind` cases).
+- Removed the unused `hotkey` setting (the hotkey is fixed to Right Command) and
+  renamed a mis-named test file.
+
 ## 0.3.0 - 2026-06-04
 
 ### Transcription models

@@ -15,7 +15,7 @@ ICONSET_DIR="$APP_ROOT/Resources/AppIcon.iconset"
 ICON_ICNS="$APP_ROOT/Resources/Friday.icns"
 
 BUNDLE_IDENTIFIER="${FRIDAY_BUNDLE_IDENTIFIER:-com.fw.friday.local}"
-SHORT_VERSION="${FRIDAY_SHORT_VERSION:-0.3.0}"
+SHORT_VERSION="${FRIDAY_SHORT_VERSION:-0.3.1}"
 # The app talks to whisper-server over HTTP at runtime, so that is the binary we
 # bundle. FRIDAY_WHISPER_SERVER_PATH overrides autodetection (default: whisper-server on PATH).
 WHISPER_SERVER_SOURCE="${FRIDAY_WHISPER_SERVER_PATH:-}"
