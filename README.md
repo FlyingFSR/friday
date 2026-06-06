@@ -6,6 +6,10 @@ transcribed entirely on-device and pasted straight into whatever app you're usin
 No cloud, no accounts, no audio ever leaves your Mac. Transcription runs locally
 via [whisper.cpp](https://github.com/ggerganov/whisper.cpp).
 
+<p align="center">
+  <img src="docs/demo.gif" alt="Friday demo — hold Right Command, speak, release" width="500">
+</p>
+
 > Friday lives in your menu bar and stays out of the way until you hold the
 > hotkey. It's built for people who think faster than they type and don't want
 > to send their voice to someone else's server to do it.
