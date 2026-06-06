@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Friday release downloads
+    url: https://github.com/FlyingFSR/friday/releases/latest
+    about: Download the latest public macOS preview build.
