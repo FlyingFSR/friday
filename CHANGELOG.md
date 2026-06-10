@@ -2,6 +2,14 @@
 
 ## 0.3.1 - 2026-06-05
 
+### Maintainer field note - 2026-06-10
+
+- After several days of real daily use on the current release, Friday has been
+  stable and handy for the maintainer's own push-to-talk workflow, with no
+  blocking issues observed during that period. This is still early maintainer
+  feedback rather than a broad compatibility claim, but it is a useful signal
+  that the 0.3.x reliability work is holding up in normal use.
+
 ### Reliability
 
 - **whisper-server now recovers if it dies mid-session.** `isReady` was set once at
