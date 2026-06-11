@@ -2,7 +2,7 @@
 
 ## Summary
 
-- 
+-
 
 ## Why
 

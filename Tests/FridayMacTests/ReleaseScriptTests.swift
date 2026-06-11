@@ -12,7 +12,7 @@ struct ReleaseScriptTests {
   @Test
   func buildScriptDefaultsToCurrentReleaseVersion() throws {
     let script = try read("scripts/build-local-app.sh")
-    #expect(script.contains(#"SHORT_VERSION="${FRIDAY_SHORT_VERSION:-0.3.1}""#))
+    #expect(script.contains(#"SHORT_VERSION="${FRIDAY_SHORT_VERSION:-0.3.2}""#))
   }
 
   @Test

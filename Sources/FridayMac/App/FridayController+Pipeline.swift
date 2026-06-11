@@ -283,10 +283,10 @@ extension FridayController {
   }
 
   func resolveTranscriptionModel() -> ModelTier {
-    if settings.installedModels.contains(settings.defaultModel) {
-      return settings.defaultModel
-    }
-    return .medium
+    Self.preferredTranscriptionModel(
+      defaultModel: settings.defaultModel,
+      installedModels: settings.installedModels
+    ) ?? .medium
   }
 
   /// Transcribe, recovering once if whisper-server has died mid-session.

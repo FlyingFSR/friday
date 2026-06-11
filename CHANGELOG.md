@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.3.2 - 2026-06-11
+
+### Reliability
+
+- Unified model fallback routing so the app and `whisper-server` always agree
+  on the installed transcription model to use. If the saved default is missing
+  and only Turbo is installed, Friday now routes both paths to Turbo instead of
+  letting one path drift back to Medium.
+- Centralized CJK script detection across language detection, diagnostics,
+  cleanup, and hallucination trimming so mixed Chinese/English behavior uses
+  one shared definition of Chinese text.
+
+### Project maintenance
+
+- Added community-facing GitHub templates and support docs, plus the demo media
+  used by the README.
+- Added durable project closeout rules so useful Friday changes from earlier
+  sessions are verified and committed instead of being left dangling.
+
 ## 0.3.1 - 2026-06-05
 
 ### Maintainer field note - 2026-06-10

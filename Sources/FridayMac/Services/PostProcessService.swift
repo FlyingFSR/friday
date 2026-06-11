@@ -319,20 +319,11 @@ final class PostProcessService {
   }
 
   private func containsCJK(_ text: String) -> Bool {
-    text.unicodeScalars.contains(where: isCJK)
+    CJKScript.containsCJK(text)
   }
 
   private func isCJK(_ character: Character) -> Bool {
-    character.unicodeScalars.contains(where: isCJK)
-  }
-
-  private func isCJK(_ scalar: Unicode.Scalar) -> Bool {
-    switch scalar.value {
-    case 0x4E00...0x9FFF, 0x3400...0x4DBF:
-      return true
-    default:
-      return false
-    }
+    CJKScript.isCJK(character)
   }
 
   private func isChinesePunctuation(_ character: Character) -> Bool {
