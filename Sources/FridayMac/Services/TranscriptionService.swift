@@ -115,7 +115,7 @@ final class TranscriptionService {
   }
 
   private static func stripShortEnglishHallucinationTailAfterCJK(_ text: String) -> String {
-    let pattern = #"(?<=[\u4E00-\u9FFF\u3400-\u4DBF])\s+(?:Thank you|Thanks for watching|you|Bye bye|Bye)[\s.!?。！？]*$"#
+    let pattern = #"(?<=["# + CJKScript.regexCharacterClass + #"])\s+(?:Thank you|Thanks for watching|you|Bye bye|Bye)[\s.!?。！？]*$"#
     guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else {
       return text
     }

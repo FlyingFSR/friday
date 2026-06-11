@@ -32,6 +32,15 @@ struct ModelRoutingPolicyTests {
   }
 
   @Test
+  func routeFallsBackToTurboWhenOnlyTurboIsInstalled() {
+    let controller = makeController()
+    controller.settings.defaultModel = .medium
+    controller.settings.installedModels = [.turbo]
+
+    #expect(controller.resolveTranscriptionModel() == .turbo)
+  }
+
+  @Test
   func migratesLargeV3DefaultToTurboWhenInstalled() async {
     let controller = makeController()
     controller.settings.defaultModel = .largeV3

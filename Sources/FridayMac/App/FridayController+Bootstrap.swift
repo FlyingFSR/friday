@@ -131,29 +131,19 @@ extension FridayController {
     let installed = await modelManager.installedModels().filter { $0 == .medium || $0 == .turbo }
     let updated = await settingsStore.update { settings in
       settings.installedModels = installed
-      if installed.contains(settings.defaultModel) {
-        return
-      }
-      if installed.contains(.medium) {
-        settings.defaultModel = .medium
-      } else if let firstInstalled = installed.first {
-        settings.defaultModel = firstInstalled
-      } else {
-        settings.defaultModel = .medium
-      }
+      settings.defaultModel = Self.preferredTranscriptionModel(
+        defaultModel: settings.defaultModel,
+        installedModels: installed
+      ) ?? .medium
     }
     settings = updated
   }
 
   func startWhisperServerIfModelReady() async {
-    let candidateTier: ModelTier?
-    if settings.installedModels.contains(settings.defaultModel) {
-      candidateTier = settings.defaultModel
-    } else {
-      candidateTier = settings.installedModels.first { $0 == .medium || $0 == .turbo }
-    }
-
-    guard let modelTier = candidateTier else {
+    guard let modelTier = Self.preferredTranscriptionModel(
+      defaultModel: settings.defaultModel,
+      installedModels: settings.installedModels
+    ) else {
       log("whisper-server not started: no installed transcription model")
       return
     }
@@ -165,6 +155,22 @@ extension FridayController {
     } catch {
       log("whisper-server failed to start: \(error.localizedDescription)")
     }
+  }
+
+  static func preferredTranscriptionModel(
+    defaultModel: ModelTier,
+    installedModels: [ModelTier]
+  ) -> ModelTier? {
+    if installedModels.contains(defaultModel), defaultModel == .medium || defaultModel == .turbo {
+      return defaultModel
+    }
+    if installedModels.contains(.medium) {
+      return .medium
+    }
+    if installedModels.contains(.turbo) {
+      return .turbo
+    }
+    return nil
   }
 
   func cleanupStaleArtifactsOnBootstrap() {
