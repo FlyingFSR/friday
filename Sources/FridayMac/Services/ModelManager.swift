@@ -18,6 +18,10 @@ actor ModelManager {
   private let modelCatalog: [ModelTier: ModelDescriptor]
   private let downloadSession: any ModelDownloadSession
   private let resourceRootURL: URL?
+  // Tiers whose on-disk checksum was verified during this launch. Hashing a
+  // ~1.5 GB model costs ~0.8s, and `ensureModelInstalled` runs on every
+  // transcription; the checksum guards installs, not the hot path.
+  private var verifiedTiers: Set<ModelTier> = []
 
   private static let vadModelFilename = "ggml-silero-v6.2.0.bin"
   private static let vadModelDownloadURL = "https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v6.2.0.bin"
@@ -63,8 +67,12 @@ actor ModelManager {
 
     let modelURL = modelFileURL(for: tier)
     if fileManager.fileExists(atPath: modelURL.path) {
+      if verifiedTiers.contains(tier) {
+        return modelURL
+      }
       do {
         try verifyChecksum(of: modelURL, expected: descriptor.sha256)
+        verifiedTiers.insert(tier)
         try await syncInstalledModelsWithSettings()
         return modelURL
       } catch {
@@ -171,6 +179,7 @@ actor ModelManager {
   }
 
   func removeModel(_ tier: ModelTier) async throws -> Bool {
+    verifiedTiers.remove(tier)
     let modelURL = modelFileURL(for: tier)
     guard fileManager.fileExists(atPath: modelURL.path) else {
       return false

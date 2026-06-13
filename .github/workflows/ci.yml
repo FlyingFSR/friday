@@ -1,0 +1,19 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    # macos-15 ships Xcode 16+, required for the Swift Testing framework
+    # used by the test suite. Tests are fully mocked — no whisper-server
+    # binary or model download is needed.
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: swift build
+      - name: Test
+        run: swift test

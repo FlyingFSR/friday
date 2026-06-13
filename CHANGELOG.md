@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.3.3 - 2026-06-13
+
+### Performance
+
+- **Dictation is ~0.8s faster.** The full model checksum (1.4–1.6 GB SHA256)
+  was being re-verified on every transcription. Checksums are still verified
+  on download, install, and once per launch; within a running session the
+  verified result is now cached, and removing a model invalidates its cache
+  entry.
+
+### Continuous integration
+
+- Added a GitHub Actions workflow that builds the app and runs the full test
+  suite on every push and pull request, with a status badge in the README.
+
+### Documentation
+
+- Known Limitations now discloses Friday's opinionated cleanup behaviors:
+  brand-name normalization (e.g. "cloud" → "Claude", "codec" → "Codex") runs in
+  all cleanup modes, and Korean/Japanese character runs are stripped as
+  hallucination artifacts. A user-configurable vocabulary list is planned.
+
 ## 0.3.2 - 2026-06-11
 
 ### Reliability
