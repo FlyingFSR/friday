@@ -1,5 +1,7 @@
 # Friday
 
+[![CI](https://github.com/FlyingFSR/friday/actions/workflows/ci.yml/badge.svg)](https://github.com/FlyingFSR/friday/actions/workflows/ci.yml)
+
 **Local-first voice input for macOS.** Hold a key, speak, release — your words are
 transcribed entirely on-device and pasted straight into whatever app you're using.
 
@@ -117,6 +119,14 @@ current state:
 - **Two models: Medium and Turbo.** Turbo (`large-v3-turbo`) is recommended for
   mixed Chinese/English; Medium is lighter on memory. The older Large v3 option was
   removed in favor of Turbo, which is similarly accurate but much faster.
+- **Opinionated text cleanup.** Friday currently rewrites words that sound like
+  AI coding tools — a standalone "cloud"/"claud" becomes "Claude", and
+  "codec"/"cortex"/"code x" become "Codex" — in **all** cleanup modes, with no
+  off switch yet. It also strips runs of Korean (Hangul) and Japanese kana from
+  results as whisper hallucination artifacts, so Friday is currently unsuitable
+  for dictating Japanese or Korean. Both behaviors reflect the primary
+  maintainer's daily Chinese/English workflow; a user-configurable vocabulary
+  list is planned.
 
 ## Distributing a Signed Build
 
