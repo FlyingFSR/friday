@@ -6,8 +6,13 @@ struct OnboardingView: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 18) {
-        Text("Friday Setup")
-          .font(.system(size: 24, weight: .semibold))
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+          Text("Friday Setup")
+            .font(.system(size: 24, weight: .semibold))
+          Text(AppInfo.versionLabel)
+            .font(.system(size: 13, weight: .medium))
+            .foregroundStyle(.secondary)
+        }
 
         Text("Complete setup in order: microphone, accessibility, input monitoring, then download your default model.")
           .font(.system(size: 13))

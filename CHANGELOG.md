@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.5 - 2026-06-17
+
+### Fixes
+
+- **The app version is now actually visible.** The 0.3.4 version label was added
+  to a view that the status-bar icon does not present, so it never appeared. The
+  version now shows as a header item at the top of the status-bar menu and next
+  to the "Friday Setup" window title.
+
+### Continuous integration
+
+- Bumped `actions/checkout` from v4 to v5 to clear the Node.js 20 deprecation
+  warning on CI runs.
+
 ## 0.3.4 - 2026-06-17
 
 ### Models
