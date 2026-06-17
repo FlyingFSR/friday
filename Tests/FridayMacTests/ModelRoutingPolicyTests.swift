@@ -8,22 +8,13 @@ struct ModelRoutingPolicyTests {
   func selectedMediumStaysOnMedium() {
     let controller = makeController()
     controller.settings.defaultModel = .medium
-    controller.settings.installedModels = [.medium, .turbo]
+    controller.settings.installedModels = [.medium]
 
     #expect(controller.resolveTranscriptionModel() == .medium)
   }
 
   @Test
-  func selectedTurboUsesTurboWhenInstalled() {
-    let controller = makeController()
-    controller.settings.defaultModel = .turbo
-    controller.settings.installedModels = [.medium, .turbo]
-
-    #expect(controller.resolveTranscriptionModel() == .turbo)
-  }
-
-  @Test
-  func routeFallsBackToMediumWhenDefaultNotInstalled() {
+  func retiredDefaultRoutesToMediumWhenInstalled() {
     let controller = makeController()
     controller.settings.defaultModel = .turbo
     controller.settings.installedModels = [.medium]
@@ -32,31 +23,33 @@ struct ModelRoutingPolicyTests {
   }
 
   @Test
-  func routeFallsBackToTurboWhenOnlyTurboIsInstalled() {
-    let controller = makeController()
-    controller.settings.defaultModel = .medium
-    controller.settings.installedModels = [.turbo]
-
-    #expect(controller.resolveTranscriptionModel() == .turbo)
+  func preferredModelIsNilWhenOnlyRetiredModelsRemain() {
+    // A leftover Turbo weight on disk is not routable anymore; the policy
+    // returns nil so the app prompts the user to install Medium.
+    let preferred = FridayController.preferredTranscriptionModel(
+      defaultModel: .turbo,
+      installedModels: [.turbo]
+    )
+    #expect(preferred == nil)
   }
 
   @Test
-  func migratesLargeV3DefaultToTurboWhenInstalled() async {
-    let controller = makeController()
-    controller.settings.defaultModel = .largeV3
-    controller.settings.installedModels = [.medium, .turbo]
-
-    await controller.migrateAwayFromLargeV3IfNeeded()
-    #expect(controller.settings.defaultModel == .turbo)
-  }
-
-  @Test
-  func migratesLargeV3DefaultToMediumWhenTurboMissing() async {
+  func migratesLargeV3DefaultToMedium() async {
     let controller = makeController()
     controller.settings.defaultModel = .largeV3
     controller.settings.installedModels = [.medium]
 
-    await controller.migrateAwayFromLargeV3IfNeeded()
+    await controller.migrateAwayFromRetiredModelsIfNeeded()
+    #expect(controller.settings.defaultModel == .medium)
+  }
+
+  @Test
+  func migratesTurboDefaultToMedium() async {
+    let controller = makeController()
+    controller.settings.defaultModel = .turbo
+    controller.settings.installedModels = [.medium]
+
+    await controller.migrateAwayFromRetiredModelsIfNeeded()
     #expect(controller.settings.defaultModel == .medium)
   }
 

@@ -12,7 +12,7 @@ struct ReleaseScriptTests {
   @Test
   func buildScriptDefaultsToCurrentReleaseVersion() throws {
     let script = try read("scripts/build-local-app.sh")
-    #expect(script.contains(#"SHORT_VERSION="${FRIDAY_SHORT_VERSION:-0.3.2}""#))
+    #expect(script.contains(#"SHORT_VERSION="${FRIDAY_SHORT_VERSION:-0.3.4}""#))
   }
 
   @Test
@@ -24,10 +24,10 @@ struct ReleaseScriptTests {
   }
 
   @Test
-  func realSmokeDefaultsToMediumAndTurbo() throws {
+  func realSmokeDefaultsToMediumOnly() throws {
     let script = try read("scripts/iterate_real_smoke.sh")
-    #expect(script.contains(#"FRIDAY_REAL_SMOKE_MODELS", "medium,large-v3-turbo""#))
-    #expect(script.contains(#"required_models = ["medium", "large-v3-turbo"]"#))
+    #expect(script.contains(#"FRIDAY_REAL_SMOKE_MODELS", "medium""#))
+    #expect(script.contains(#"required_models = ["medium"]"#))
   }
 
   private func read(_ relativePath: String) throws -> String {

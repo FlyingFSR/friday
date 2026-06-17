@@ -61,8 +61,7 @@ kill %1
 
 - [ ] Medium model installs (download in onboarding) or a bundled model is
       detected, and the app reports it as ready.
-- [ ] Model policy shows realistic download sizes: Medium ~1.5 GB and Turbo
-      ~1.6 GB.
+- [ ] Model policy shows a realistic download size: Medium ~1.5 GB.
 - [ ] whisper-server starts after the model is ready (no "whisper-server not
       found / failed to start" error).
 
