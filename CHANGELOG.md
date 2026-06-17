@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.4 - 2026-06-17
+
+### Models
+
+- **Retired the Turbo model; Friday now ships Medium only.** In real use Turbo
+  (`large-v3-turbo`) could intermittently drop short mid-sentence segments,
+  while Medium proved consistently reliable. Turbo is removed from the menu and
+  setup screens. On launch, any saved default still pointing at Turbo (or the
+  older Large v3) is migrated to Medium, and the obsolete weight files are
+  deleted to reclaim disk space.
+
+### Interface
+
+- The menu bar panel now shows the app version next to the Friday title.
+
 ## 0.3.3 - 2026-06-13
 
 ### Performance

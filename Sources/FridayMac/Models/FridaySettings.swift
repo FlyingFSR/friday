@@ -4,6 +4,10 @@ enum ModelTier: String, Codable, CaseIterable, Identifiable {
   case base
   case small
   case medium
+  // `largeV3` and `turbo` are retired models. Friday now ships Medium only, but
+  // these cases are kept so older settings files (which may still name them as
+  // the default or an installed model) decode cleanly and can be migrated to
+  // Medium on launch. See FridayController.migrateAwayFromRetiredModelsIfNeeded.
   case largeV3 = "large-v3"
   case turbo = "large-v3-turbo"
 

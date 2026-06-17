@@ -89,12 +89,10 @@ installation.
 
 ## Models
 
-- Two models are offered: **Medium** and **Turbo** (`large-v3-turbo`)
-- **Turbo is recommended for mixed Chinese/English** — close to Large-v3 accuracy
-  on code-switching but much faster (it keeps the full large encoder and only
-  trims the decoder). Medium is lighter on memory.
+- Friday ships a single transcription model: **Medium**. It is accurate on
+  everyday Chinese/English dictation and light on memory.
 - Models download to `~/Library/Application Support/Friday/models`
-- Approximate download sizes: Medium ~1.5 GB; Turbo ~1.6 GB
+- Approximate download size: Medium ~1.5 GB
 - Voice-activity (VAD) segmentation is implemented but **disabled by default** in
   the current build while its quality is validated; the Silero VAD model is only
   downloaded if VAD is enabled (see [Known Limitations](#known-limitations), and
@@ -105,8 +103,8 @@ installation.
 Friday is early software. A few things are intentionally honest about their
 current state:
 
-- **Mixed-language edge cases.** Typical Chinese/English dictation works well on
-  Turbo, but because the whole recording is still decoded in a single pass with one
+- **Mixed-language edge cases.** Typical Chinese/English dictation works well,
+  but because the whole recording is decoded in a single pass with one
   auto-detected language, very rapid switching can occasionally drop a short
   segment. Tracked in [#4](https://github.com/FlyingFSR/friday/issues/4).
 - **VAD is off by default.** Per-segment voice-activity detection is implemented
@@ -116,9 +114,11 @@ current state:
   launch needs the **Privacy & Security** -> **Security** -> **Open Anyway** flow
   to get past Gatekeeper. Signed/notarized builds are planned.
 - **Apple Silicon only.** macOS 13+ on Apple Silicon; there is no Intel build.
-- **Two models: Medium and Turbo.** Turbo (`large-v3-turbo`) is recommended for
-  mixed Chinese/English; Medium is lighter on memory. The older Large v3 option was
-  removed in favor of Turbo, which is similarly accurate but much faster.
+- **Single model: Medium.** Friday ships only the Medium model. Earlier builds
+  also offered Large v3 and Turbo (`large-v3-turbo`); both were retired because
+  Turbo could intermittently drop short mid-sentence segments, and Medium proved
+  the most reliable in everyday use. Upgrading users are migrated to Medium
+  automatically and the old weight files are deleted to reclaim disk space.
 - **Opinionated text cleanup.** Friday currently rewrites words that sound like
   AI coding tools — a standalone "cloud"/"claud" becomes "Claude", and
   "codec"/"cortex"/"code x" become "Codex" — in **all** cleanup modes, with no

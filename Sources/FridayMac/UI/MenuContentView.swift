@@ -40,12 +40,22 @@ struct MenuContentView: View {
 
   private var header: some View {
     VStack(alignment: .leading, spacing: 4) {
-      Text("Friday")
-        .font(.system(size: 16, weight: .semibold))
+      HStack(alignment: .firstTextBaseline, spacing: 6) {
+        Text("Friday")
+          .font(.system(size: 16, weight: .semibold))
+        Text(appVersionLabel)
+          .font(.system(size: 11))
+          .foregroundStyle(.secondary)
+      }
       Text("Hold Right Command to talk, release to paste.")
         .font(.system(size: 11))
         .foregroundStyle(.secondary)
     }
+  }
+
+  private var appVersionLabel: String {
+    let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
+    return version.map { "v\($0)" } ?? "dev"
   }
 
   private var permissionSection: some View {
@@ -81,7 +91,7 @@ struct MenuContentView: View {
       Text("Model")
         .font(.system(size: 12, weight: .semibold))
 
-      ForEach([ModelTier.medium, ModelTier.turbo]) { tier in
+      ForEach([ModelTier.medium]) { tier in
         if let descriptor = controller.descriptor(for: tier) {
           modelRow(tier: tier, descriptor: descriptor)
         }

@@ -4,20 +4,18 @@ import Testing
 
 struct ModelCatalogTests {
   @Test
-  func catalogContainsRequiredModels() {
-    #expect(ModelCatalog.all[.base] != nil)
-    #expect(ModelCatalog.all[.small] != nil)
+  func catalogContainsOnlyMedium() {
     #expect(ModelCatalog.all[.medium] != nil)
-    #expect(ModelCatalog.all[.turbo] != nil)
+    // Retired models must not be offered for install anymore.
+    #expect(ModelCatalog.all[.turbo] == nil)
+    #expect(ModelCatalog.all[.largeV3] == nil)
   }
 
   @Test
   func catalogSizeEstimatesMatchPublishedWhisperDownloads() throws {
     let medium = try #require(ModelCatalog.all[.medium])
-    let turbo = try #require(ModelCatalog.all[.turbo])
 
     #expect(medium.approxSizeMB == 1530)
-    #expect(turbo.approxSizeMB == 1550)
   }
 
   @Test

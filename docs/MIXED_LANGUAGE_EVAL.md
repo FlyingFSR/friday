@@ -19,7 +19,7 @@ implemented but disabled by default — see [VAD_CHANGELOG.md](../VAD_CHANGELOG.
 
 For each phrase below: open a clean TextEdit window, hold **Right Command**,
 read the phrase **once at a natural pace**, release, and paste. Record the result
-verbatim. Run the whole set twice: once on **Medium**, once on **Turbo**.
+verbatim. Run the whole set on **Medium** (the model Friday ships).
 
 Score each phrase:
 
@@ -45,8 +45,8 @@ Key tokens that must survive are in `[brackets]`. Bracket markers are *not* spok
    这个 `[function]` 的问题是 it `[silently]` `[drops]` the English `[segment]`,
    我们需要修一下。
 
-5. **Numbers / model names.**
-   把模型从 `[Medium]` 换成 `[Turbo]`,然后比较 `[latency]` 和 `[accuracy]`。
+5. **Numbers / tech terms.**
+   把 `[Medium]` 的 `[latency]` 和 `[accuracy]` 都 `[benchmark]` 一下。
 
 6. **Long English tail after Chinese.**
    我先解释一下背景,然后 `[here is the part that usually gets dropped because]`
@@ -61,7 +61,6 @@ Key tokens that must survive are in `[brackets]`. Bracket markers are *not* spok
 | # | Model | Result (verbatim) | Score | Dropped tokens |
 |---|-------|-------------------|-------|----------------|
 | 1 | Medium |  |  |  |
-| 1 | Turbo |  |  |  |
 | 2 | Medium |  |  |  |
 | … | … |  |  |  |
 
@@ -71,7 +70,5 @@ Key tokens that must survive are in `[brackets]`. Bracket markers are *not* spok
 - DROPs concentrated on phrases 3, 4, 6 confirm the single-pass language-detection
   root cause; that is the signal for whether re-enabling VAD (or per-chunk
   decoding) is worth it.
-- If Turbo passes where Medium drops, that's useful guidance for the default
-  model recommendation.
 - Paste the filled table into [issue #4](https://github.com/FlyingFSR/friday/issues/4)
   so the dropped-segment cases are tracked with concrete evidence.

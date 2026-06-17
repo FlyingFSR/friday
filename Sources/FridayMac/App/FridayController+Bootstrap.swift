@@ -29,7 +29,7 @@ extension FridayController {
 
     Task {
       settings = await settingsStore.load()
-      await migrateAwayFromLargeV3IfNeeded()
+      await migrateAwayFromRetiredModelsIfNeeded()
       cleanupStaleArtifactsOnBootstrap()
       refreshPermissions()
       startPermissionPolling(duration: 6)
@@ -109,26 +109,30 @@ extension FridayController {
     }
   }
 
-  /// Friday no longer ships Large v3 (replaced by the faster Turbo model).
-  /// Migrate any saved default still pointing at large-v3 over to Turbo
-  /// (or Medium if Turbo isn't installed yet) and delete the obsolete ~3 GB
-  /// weight file so upgrading users reclaim the disk space.
-  func migrateAwayFromLargeV3IfNeeded() async {
-    if settings.defaultModel == .largeV3 {
-      let replacement: ModelTier = settings.installedModels.contains(.turbo) ? .turbo : .medium
+  /// Friday now ships a single transcription model (Medium). Earlier builds also
+  /// offered Large v3 and, later, Turbo (`large-v3-turbo`). Migrate any saved
+  /// default still pointing at a retired model over to Medium and delete the
+  /// obsolete weight files so upgrading users reclaim the disk space.
+  func migrateAwayFromRetiredModelsIfNeeded() async {
+    let retiredModels: [ModelTier] = [.largeV3, .turbo]
+
+    if retiredModels.contains(settings.defaultModel) {
+      let previous = settings.defaultModel
       settings = await settingsStore.update { settings in
-        settings.defaultModel = replacement
+        settings.defaultModel = .medium
       }
-      log("Migrated default model large-v3 -> \(replacement.rawValue)")
+      log("Migrated default model \(previous.rawValue) -> medium")
     }
 
-    if (try? await modelManager.removeModel(.largeV3)) == true {
-      log("Removed obsolete large-v3 weight file from disk")
+    for tier in retiredModels {
+      if (try? await modelManager.removeModel(tier)) == true {
+        log("Removed obsolete \(tier.rawValue) weight file from disk")
+      }
     }
   }
 
   func refreshInstalledModelsFromDisk() async {
-    let installed = await modelManager.installedModels().filter { $0 == .medium || $0 == .turbo }
+    let installed = await modelManager.installedModels().filter { $0 == .medium }
     let updated = await settingsStore.update { settings in
       settings.installedModels = installed
       settings.defaultModel = Self.preferredTranscriptionModel(
@@ -161,14 +165,11 @@ extension FridayController {
     defaultModel: ModelTier,
     installedModels: [ModelTier]
   ) -> ModelTier? {
-    if installedModels.contains(defaultModel), defaultModel == .medium || defaultModel == .turbo {
+    if installedModels.contains(defaultModel), defaultModel == .medium {
       return defaultModel
     }
     if installedModels.contains(.medium) {
       return .medium
-    }
-    if installedModels.contains(.turbo) {
-      return .turbo
     }
     return nil
   }
