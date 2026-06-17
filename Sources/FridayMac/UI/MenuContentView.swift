@@ -43,7 +43,7 @@ struct MenuContentView: View {
       HStack(alignment: .firstTextBaseline, spacing: 6) {
         Text("Friday")
           .font(.system(size: 16, weight: .semibold))
-        Text(appVersionLabel)
+        Text(AppInfo.versionLabel)
           .font(.system(size: 11))
           .foregroundStyle(.secondary)
       }
@@ -51,11 +51,6 @@ struct MenuContentView: View {
         .font(.system(size: 11))
         .foregroundStyle(.secondary)
     }
-  }
-
-  private var appVersionLabel: String {
-    let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
-    return version.map { "v\($0)" } ?? "dev"
   }
 
   private var permissionSection: some View {

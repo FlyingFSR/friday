@@ -101,6 +101,11 @@ final class StatusBarController: NSObject {
   private func configureMenu() {
     let menu = NSMenu()
 
+    let versionItem = NSMenuItem(title: "Friday \(AppInfo.versionLabel)", action: nil, keyEquivalent: "")
+    versionItem.isEnabled = false
+    menu.addItem(versionItem)
+    menu.addItem(.separator())
+
     let openSetup = NSMenuItem(title: "Open Friday Setup", action: #selector(openSetupAssistant), keyEquivalent: "")
     openSetup.target = self
 
