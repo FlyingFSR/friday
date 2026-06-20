@@ -2,6 +2,15 @@
 
 ## 0.3.5 - 2026-06-17
 
+### Maintainer field note - 2026-06-20
+
+- After several days of daily push-to-talk use on the Medium-only build (Turbo
+  was retired in 0.3.4), the maintainer has seen no recurrence of the
+  intermittent mid-sentence character drops that motivated retiring Turbo.
+  Dictation has been consistently reliable in normal use. As always, this is
+  early maintainer feedback rather than a broad accuracy claim, but it confirms
+  that the decision to ship Medium only is holding up well in practice.
+
 ### Fixes
 
 - **The app version is now actually visible.** The 0.3.4 version label was added
