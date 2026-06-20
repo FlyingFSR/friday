@@ -16,6 +16,11 @@ via [whisper.cpp](https://github.com/ggerganov/whisper.cpp).
 > hotkey. It's built for people who think faster than they type and don't want
 > to send their voice to someone else's server to do it.
 
+<p align="center">
+  <a href="https://github.com/FlyingFSR/friday/releases/latest"><b>⬇&nbsp; Download the latest release</b></a><br>
+  <sub>Unsigned preview build — first launch needs the <a href="#opening-the-unsigned-preview-release">Open Anyway</a> step. Or <a href="#quick-start-from-source">build from source</a>.</sub>
+</p>
+
 ## Features
 
 - **Push-to-talk** — hold `Right Command` to record, release to transcribe.
@@ -200,6 +205,16 @@ It's open source because a local-first voice input tool is something people
 should be able to inspect, adapt, and trust. Issues and pull requests are
 welcome, especially from people testing it on real Macs and real dictation
 workflows.
+
+## Related projects
+
+Other open-source tools by the same author:
+
+- [critical-second-pass](https://github.com/FlyingFSR/critical-second-pass) — a
+  Codex skill for an honest, harder second read of a plan, diff, or draft.
+- [conversation-archive](https://github.com/FlyingFSR/conversation-archive) — a
+  skill for AI assistants that turns conversations into structured archives that
+  keep their texture, not just their text.
 
 ## License
 
