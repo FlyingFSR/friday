@@ -5,12 +5,12 @@ import ApplicationServices
 final class PasteService {
   private var activeRestoreToken: UUID?
 
-  private struct PasteboardPayload {
+  struct PasteboardPayload {
     let type: NSPasteboard.PasteboardType
     let data: Data
   }
 
-  private struct PasteboardSnapshot {
+  struct PasteboardSnapshot {
     let items: [[PasteboardPayload]]
   }
 
@@ -75,7 +75,7 @@ final class PasteService {
     up.post(tap: .cghidEventTap)
   }
 
-  private func captureSnapshot(from pasteboard: NSPasteboard) -> PasteboardSnapshot {
+  func captureSnapshot(from pasteboard: NSPasteboard) -> PasteboardSnapshot {
     let payload = (pasteboard.pasteboardItems ?? []).map { item in
       var itemPayloads: [PasteboardPayload] = []
       for type in item.types {
@@ -89,7 +89,7 @@ final class PasteService {
     return PasteboardSnapshot(items: payload)
   }
 
-  private func restore(_ snapshot: PasteboardSnapshot, to pasteboard: NSPasteboard) {
+  func restore(_ snapshot: PasteboardSnapshot, to pasteboard: NSPasteboard) {
     pasteboard.clearContents()
     guard !snapshot.items.isEmpty else {
       return

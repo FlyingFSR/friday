@@ -22,7 +22,7 @@ What did you expect Friday to do?
 - macOS version:
 - Mac model / chip:
 - Friday version:
-- Model used: Medium / Turbo
+- Model used: Medium
 - Keyboard type: Apple / external / other
 
 ## Logs or screenshots

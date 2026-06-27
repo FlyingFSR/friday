@@ -84,8 +84,10 @@ extension FridayController {
     ModelCatalog.all[tier]
   }
 
+  private static let diagnosticsTimestampFormatter = ISO8601DateFormatter()
+
   func log(_ message: String) {
-    let stamp = ISO8601DateFormatter().string(from: Date())
+    let stamp = Self.diagnosticsTimestampFormatter.string(from: Date())
     let line = "[\(stamp)] \(message)"
     diagnostics.insert(line, at: 0)
     appendDiagnosticsToDisk(line)
@@ -95,11 +97,7 @@ extension FridayController {
   }
 
   func transcriptScriptStats(_ text: String) -> String {
-    let scalars = text.unicodeScalars
-    let cjkCount = scalars.filter(CJKScript.isCJK).count
-    let latinCount = scalars.filter { scalar in
-      CharacterSet.letters.contains(scalar) && scalar.value < 0x024F
-    }.count
-    return "len=\(text.count), cjk=\(cjkCount), latin=\(latinCount)"
+    let counts = LanguageDetector.scriptCounts(in: text)
+    return "len=\(text.count), cjk=\(counts.cjk), latin=\(counts.latin)"
   }
 }
