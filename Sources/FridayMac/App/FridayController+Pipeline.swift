@@ -52,8 +52,11 @@ extension FridayController {
     }
 
     stopRecordingTimer()
-    let sessionID = activeSessionID ?? UUID()
-    activeSessionID = sessionID
+    guard let sessionID = activeSessionID else {
+      // pipelineState == .recording guarantees handleHotkeyDown set an active
+      // session; bail defensively instead of fabricating a stray ID.
+      return
+    }
 
     do {
       let recording = try audioCaptureService.endSession()
