@@ -173,6 +173,12 @@ final class PostProcessService {
     // a single spoken passage across several lines. Flatten those raw newlines
     // to spaces first; the explicit voice commands (新段落 / 换行) handled below
     // reintroduce only the breaks the user actually asked for.
+    // A mark the user dictated out loud ("句号") is an explicit instruction, not
+    // a guess about intent, so it has to survive the terminal strip at the end.
+    // Record that before the commands are converted — afterwards the mark is
+    // indistinguishable from one the model produced on its own.
+    let endsWithDictatedPunctuation = endsWithSpokenPunctuationCommand(trimmed)
+
     var text = trimmed.replacingOccurrences(
       of: "\\s*\\n\\s*",
       with: " ",
@@ -197,7 +203,20 @@ final class PostProcessService {
       .replacingOccurrences(of: "[ \\t]+\\n", with: "\n", options: .regularExpression)
       .replacingOccurrences(of: "\\n[ \\t]+", with: "\n", options: .regularExpression)
       .trimmingCharacters(in: .whitespacesAndNewlines)
-    return stripTerminalPunctuation(normalized)
+    return stripTerminalPunctuation(
+      normalized,
+      keepingDictatedFinalMark: endsWithDictatedPunctuation
+    )
+  }
+
+  /// True when the utterance ends with a spoken punctuation command, i.e. the
+  /// final mark of the cleaned text was explicitly asked for. Mirrors the
+  /// punctuation entries of the command table in `replaceDictationCommands`;
+  /// 换行 / 新段落 are absent because they produce breaks, not marks.
+  private func endsWithSpokenPunctuationCommand(_ text: String) -> Bool {
+    let punctuationCommands = ["句号", "逗号", "冒号"]
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    return punctuationCommands.contains(where: trimmed.hasSuffix)
   }
 
   /// Drop the sentence-terminal mark the utterance ends with, whoever produced
@@ -205,7 +224,17 @@ final class PostProcessService {
   /// user meant 。 or ？ — the mark is always a guess about intent, and the user's
   /// explicit rule (2026-08-29) is that no mark beats a guessed one. Internal
   /// punctuation is untouched: only the very end of the text is trimmed.
-  private func stripTerminalPunctuation(_ text: String) -> String {
+  private func stripTerminalPunctuation(
+    _ text: String,
+    keepingDictatedFinalMark: Bool = false
+  ) -> String {
+    if keepingDictatedFinalMark, let dictatedMark = text.last {
+      // The last character came from a spoken command, so keep it and apply the
+      // normal strip to everything in front of it. "……结束了。句号" therefore ends
+      // with a single 。 rather than a doubled one.
+      return stripTerminalPunctuation(String(text.dropLast())) + String(dictatedMark)
+    }
+
     let terminalMarks: Set<Character> = ["。", "．", ".", "？", "?", "！", "!"]
     // A run of three or more is a deliberate ellipsis ("..." / "。。。"), not a
     // sentence ending, so it stays. 中文省略号 …… never matches at all.

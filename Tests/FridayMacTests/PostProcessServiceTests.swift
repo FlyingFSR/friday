@@ -416,6 +416,10 @@ struct PostProcessServiceTests {
     #expect(service.cleanup("你到了吗？", mode: .smart) == "你到了吗")
     #expect(service.cleanup("好的！", mode: .smart) == "好的")
     #expect(service.cleanup("I'll do it later.", mode: .smart) == "I'll do it later")
+    // Half-width marks go too, whether or not the mid-pipeline CJK conversion
+    // has already turned them full-width.
+    #expect(service.cleanup("你到了吗?", mode: .smart) == "你到了吗")
+    #expect(service.cleanup("are you there?", mode: .smart) == "are you there")
   }
 
   @Test
@@ -437,6 +441,29 @@ struct PostProcessServiceTests {
   @Test
   func cleanupSmartKeepsInternalTerminalPunctuation() {
     #expect(service.cleanup("第一句。第二句。", mode: .smart) == "第一句。第二句")
+  }
+
+  @Test
+  func cleanupSmartKeepsAPeriodTheUserDictatedAtTheEnd() {
+    // The documented escape hatch: say 句号 when you do want a period.
+    #expect(service.cleanup("今天先到这里句号", mode: .smart) == "今天先到这里。")
+  }
+
+  @Test
+  func cleanupSmartKeepsOtherDictatedPunctuationAtTheEnd() {
+    #expect(service.cleanup("先记一下逗号", mode: .smart) == "先记一下，")
+    #expect(service.cleanup("重点如下冒号", mode: .smart) == "重点如下：")
+  }
+
+  @Test
+  func cleanupSmartCollapsesAModelMarkInFrontOfADictatedOne() {
+    // Model mark + spoken command must not leave a doubled 。.
+    #expect(service.cleanup("结束了。句号", mode: .smart) == "结束了。")
+  }
+
+  @Test
+  func cleanupSmartStillStripsModelMarksWhenTheCommandIsMidText() {
+    #expect(service.cleanup("第一点句号第二点。", mode: .smart) == "第一点。第二点")
   }
 
   @Test
