@@ -8,7 +8,6 @@ English | [中文](README.zh-CN.md)
 
 [![CI](https://github.com/FlyingFSR/friday/actions/workflows/ci.yml/badge.svg)](https://github.com/FlyingFSR/friday/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/FlyingFSR/friday)](https://github.com/FlyingFSR/friday/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/FlyingFSR/friday/total)](https://github.com/FlyingFSR/friday/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%2013%2B%20arm64-lightgrey)](#requirements)
 
@@ -23,8 +22,8 @@ leaving your Mac.
 </p>
 
 > Friday lives in your menu bar and stays out of the way until you hold the
-> hotkey. It's built for people who think faster than they type and don't want
-> to send their voice to someone else's server to do it.
+> hotkey. It's built for people who want to dictate without sending their voice
+> to someone else's server.
 
 <p align="center">
   <a href="https://github.com/FlyingFSR/friday/releases/latest"><b>⬇&nbsp; Download the latest release</b></a><br>

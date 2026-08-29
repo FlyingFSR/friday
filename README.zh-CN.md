@@ -8,7 +8,6 @@
 
 [![CI](https://github.com/FlyingFSR/friday/actions/workflows/ci.yml/badge.svg)](https://github.com/FlyingFSR/friday/actions/workflows/ci.yml)
 [![最新版本](https://img.shields.io/github/v/release/FlyingFSR/friday)](https://github.com/FlyingFSR/friday/releases/latest)
-[![下载量](https://img.shields.io/github/downloads/FlyingFSR/friday/total)](https://github.com/FlyingFSR/friday/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![平台](https://img.shields.io/badge/platform-macOS%2013%2B%20arm64-lightgrey)](#运行要求)
 
@@ -21,8 +20,8 @@
   <img src="docs/demo.gif" alt="Friday 演示 —— 按住快捷键、说话、松手" width="500">
 </p>
 
-> Friday 待在菜单栏里,不按快捷键就不打扰你。它是给那些想得比打字快、又不愿意把自己的
-> 声音送到别人服务器上的人用的。
+> Friday 待在菜单栏里,不按快捷键就不打扰你。它是给那些想口述、又不愿意把自己的声音
+> 送到别人服务器上的人用的。
 
 <p align="center">
   <a href="https://github.com/FlyingFSR/friday/releases/latest"><b>⬇&nbsp; 下载最新版本</b></a><br>
@@ -80,7 +79,7 @@
 
 ## 已知限制
 
-Friday 还是早期软件。有几件事我们宁可如实写出来 —— 这里是简版,带测量数据和推理过程的
+Friday 还是早期软件。有几件事我宁可写清楚 —— 这里是简版,带测量数据和推理过程的
 完整版在 [docs/LIMITATIONS.md](docs/LIMITATIONS.md)(语言:英文)。
 
 - **中英混说仍有边角情况。** 整段录音目前还是一次解码、只自动判定一种语言。0.4.0 修掉了
