@@ -3,6 +3,41 @@
 > Internal evaluation notes for the 0.4.0 transcription overhaul, Chinese only;
 > summary in the v0.4.0 release notes.
 
+## Abstract (English)
+
+Four rounds of controlled experiments, 500+ transcriptions over 21 recorded
+samples, asking why Friday dropped Chinese clauses inside English speech and
+sometimes translated whole English passages into Chinese.
+
+Two whisper-server launch flags were the cause. `-mc 0` did not merely weaken the
+initial biasing prompt, it discarded it entirely — four different prompts,
+including none at all, produced byte-identical output under that flag.
+`--no-timestamps` was the root cause of both English-primary failures: with the
+same model, audio, and prompt, turning timestamps on recovered every dropped
+Chinese clause and took the mistranslated passage from 100% word error rate to
+0%. The biasing prompt was also retuned (a Chinese example sentence carries
+long-form Chinese; one short English sentence rescues brand words and suppresses
+mistranslation), and multi-segment responses are now joined with CJK-aware
+whitespace rules.
+
+Headline numbers against the previous configuration: Chinese character error rate
+3.8% -> 2.2%, English word error rate 28.6% -> 3.8%, dropped Chinese clauses 2/2
+-> 0/2, mistranslated English passages 3/3 -> 0/3, punctuation density on long
+Chinese narration restored from near zero to the reference 9.9 per 100
+characters. Costs, recorded honestly: recovered Chinese clauses come back with
+character errors, traditional-character output rose from 6 to 11 occurrences
+(Friday has no simplified/traditional normalization layer), and latency rose 8.6%
+on short dictation and 23% on long audio.
+
+Samples were recorded by the maintainer in one environment with a single speaker.
+This is not a general benchmark.
+
+The body below is in Chinese: the landed decisions, the mechanism findings behind
+them, the honest costs, and the maintenance warnings about which flags must never
+come back.
+
+## 正文(中文)
+
 四轮实验共 500+ 次转写(第四轮为手切实验)。原始结果——逐条转写记录、汇总统计、各候选提示词全文——留在维护者本机的评测工作区,不随仓库分发,本文档是它的结论。对照服务器跑在本机 8179/8180 端口,未触碰 Friday 线上使用的 8178。
 
 ## 落地决定(已实施于 Friday 源码)

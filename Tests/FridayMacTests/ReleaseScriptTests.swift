@@ -60,7 +60,7 @@ struct ReleaseScriptTests {
 
   @Test
   func realSmokeDefaultsToMediumOnly() throws {
-    let script = try read("scripts/iterate_real_smoke.sh")
+    let script = try read("scripts/internal/iterate_real_smoke.sh")
     #expect(script.contains(#"FRIDAY_REAL_SMOKE_MODELS", "medium""#))
     #expect(script.contains(#"required_models = ["medium"]"#))
   }

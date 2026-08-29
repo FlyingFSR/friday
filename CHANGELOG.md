@@ -68,14 +68,7 @@
 
 ## 0.3.5 - 2026-06-17
 
-### Maintainer field note - 2026-06-20
-
-- After several days of daily push-to-talk use on the Medium-only build (Turbo
-  was retired in 0.3.4), the maintainer has seen no recurrence of the
-  intermittent mid-sentence character drops that motivated retiring Turbo.
-  Dictation has been consistently reliable in normal use. As always, this is
-  early maintainer feedback rather than a broad accuracy claim, but it confirms
-  that the decision to ship Medium only is holding up well in practice.
+Maintainer field note for 2026-06-20 moved to [docs/field-notes.md](docs/field-notes.md).
 
 ### Fixes
 
@@ -147,13 +140,7 @@
 
 ## 0.3.1 - 2026-06-05
 
-### Maintainer field note - 2026-06-10
-
-- After several days of real daily use on the current release, Friday has been
-  stable and handy for the maintainer's own push-to-talk workflow, with no
-  blocking issues observed during that period. This is still early maintainer
-  feedback rather than a broad compatibility claim, but it is a useful signal
-  that the 0.3.x reliability work is holding up in normal use.
+Maintainer field note for 2026-06-10 moved to [docs/field-notes.md](docs/field-notes.md).
 
 ### Reliability
 

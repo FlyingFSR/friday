@@ -13,7 +13,7 @@ The current path sends the whole recording to whisper-server in a single pass
 with `-l auto`. Whisper detects language roughly once, so when one recording
 switches languages many times, short segments in the "other" language can be
 dropped or mistranscribed. VAD segmentation (which would shorten each chunk) is
-implemented but disabled by default — see [VAD_CHANGELOG.md](../VAD_CHANGELOG.md).
+implemented but disabled by default — see [VAD_CHANGELOG.md](VAD_CHANGELOG.md).
 
 ## How to run
 
