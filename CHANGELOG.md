@@ -18,11 +18,13 @@
   is load-bearing (documented in the findings file) and guarded by tests.
 - New CJK-aware segment joining for the multi-segment responses produced now
   that timestamps are enabled.
-- Terminal punctuation at the end of an utterance is now always stripped in
-  smart cleanup, whether the model or post-processing produced it: a final
-  period or question mark is a guess about intent, and the maintainer prefers
-  none over a wrong guess. Interior punctuation, quoted punctuation, and
-  ellipses are preserved.
+- Terminal punctuation at the end of an utterance is now stripped in smart
+  cleanup, whether the model or post-processing produced it: a final period or
+  question mark is a guess about intent, and the maintainer prefers none over a
+  wrong guess. A mark the user dictated out loud (句号 / 逗号 / 冒号) is an
+  explicit instruction rather than a guess and survives, without doubling a
+  mark the model had already placed in front of it. Interior punctuation,
+  quoted punctuation, and ellipses are preserved.
 - Vocabulary and cleanup fixes: Chinese video-outro hallucination tails
   (variants of "thanks for watching") are stripped; Whisper / macOS / ChatGPT /
   OpenAI normalization now runs in every cleanup mode; "pool request" ->

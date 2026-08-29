@@ -1,6 +1,9 @@
 # 语言判定专项:四轮实验结论与落地决定(2026-08-29)
 
-原始数据保存在维护者本机:`~/Library/Application Support/FridayEval/results/langdet-round{1,2,3}/`(round3/handcut/ 为第四轮,共 500+ 次转写、results.json/csv、summary.txt、prompts.json 含各候选提示词全文)。对照服务器跑在本机 8179/8180 端口,未触碰 Friday 线上使用的 8178。
+> Internal evaluation notes for the 0.4.0 transcription overhaul, Chinese only;
+> summary in the v0.4.0 release notes.
+
+四轮实验共 500+ 次转写(第四轮为手切实验)。原始结果——逐条转写记录、汇总统计、各候选提示词全文——留在维护者本机的评测工作区,不随仓库分发,本文档是它的结论。对照服务器跑在本机 8179/8180 端口,未触碰 Friday 线上使用的 8178。
 
 ## 落地决定(已实施于 Friday 源码)
 

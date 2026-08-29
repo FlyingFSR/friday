@@ -120,10 +120,12 @@ current state:
   [CHANGELOG.md](CHANGELOG.md) and
   [docs/language-detection-findings-2026-08.md](docs/language-detection-findings-2026-08.md)
   for the measurements and the remaining costs.
-- **No terminal punctuation.** Friday deliberately strips a sentence-ending
-  period or question mark from the end of an utterance: it is a guess about your
-  intent, and a wrong guess is worse than none. Punctuation inside the utterance
-  is preserved, and the spoken command "句号" still inserts one explicitly.
+- **No terminal punctuation.** In smart cleanup (the default), Friday
+  deliberately strips a sentence-ending period or question mark from the end of
+  an utterance: a mark the model produced is a guess about your intent, and a
+  wrong guess is worse than none. Punctuation inside the utterance is preserved,
+  and a spoken 句号 at the end still survives cleanup — saying it is an explicit
+  instruction, not a guess.
 - **VAD is off by default.** Per-segment voice-activity detection is implemented
   end to end but disabled while its accuracy is validated, so the current path is
   a single-pass transcription of the whole recording.
@@ -140,11 +142,14 @@ current state:
   AI coding tools — a standalone "cloud"/"claud" becomes "Claude", and
   "codec"/"cortex"/"code x" become "Codex" — in **all** cleanup modes, with no
   off switch yet. As of 0.4.0 the same applies to Whisper, macOS, ChatGPT and
-  OpenAI, and to a handful of the maintainer's own vocabulary. It also strips runs of Korean (Hangul) and Japanese kana from
-  results as whisper hallucination artifacts, so Friday is currently unsuitable
-  for dictating Japanese or Korean. Both behaviors reflect the primary
-  maintainer's daily Chinese/English workflow; a user-configurable vocabulary
-  list is planned.
+  OpenAI, and to a few of the maintainer's own terms — which means the ordinary
+  English words "sole"/"soul" become "Sol", "fable(s)" becomes "Fable", and
+  "whispers" becomes "Whisper". If you dictate those words in their ordinary
+  sense, they will be replaced. It also strips runs of Korean (Hangul) and
+  Japanese kana from results as whisper hallucination artifacts, so Friday is
+  currently unsuitable for dictating Japanese or Korean. Both behaviors reflect
+  the primary maintainer's daily Chinese/English workflow; a user-configurable
+  vocabulary list is planned.
 
 ## Distributing a Signed Build
 
