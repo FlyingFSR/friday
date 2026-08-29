@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.0 - Unreleased
+## 0.4.0 - 2026-08-29
 
 ### Transcription
 
@@ -46,6 +46,22 @@
 
 - Local app builds now record the bundled whisper.cpp version and show it in
   Diagnostics, so issue reports can identify the runtime that produced them.
+
+## 0.3.6 - 2026-06-27
+
+### Fixes
+
+- Hardened recording-session handling so an unexpected state can no longer
+  create a mismatched transcription session.
+
+### Project
+
+- Removed the retired Turbo option from the bug report template.
+
+### Internal
+
+- Internal code cleanup (shared script-counting, reused timestamp formatter) and
+  new automated tests for clipboard restore and language detection.
 
 ## 0.3.5 - 2026-06-17
 

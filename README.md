@@ -29,7 +29,7 @@ via [whisper.cpp](https://github.com/ggerganov/whisper.cpp).
 - **Fully on-device** — transcription via `whisper.cpp`; audio never leaves your machine.
 - **Paste anywhere** — text is inserted at your cursor, with clipboard restore afterward.
 - **Secure-input aware** — automatically refuses to paste into password fields and other protected contexts.
-- **Early mixed-language support** — handles dictation that mixes Chinese and English, with brand/tech-term biasing and cleanup. Rapid back-and-forth switching still has rough edges (see [Known Limitations](#known-limitations)).
+- **Mixed-language dictation** — handles speech that mixes Chinese and English, with brand/tech-term biasing and cleanup, tuned against a recorded evaluation set in 0.4.0 (see [CHANGELOG.md](CHANGELOG.md) and [Known Limitations](#known-limitations)).
 - **First-run onboarding** — guided setup for permissions and model download.
 
 ## Requirements
@@ -110,10 +110,20 @@ installation.
 Friday is early software. A few things are intentionally honest about their
 current state:
 
-- **Mixed-language edge cases.** Typical Chinese/English dictation works well,
-  but because the whole recording is decoded in a single pass with one
-  auto-detected language, very rapid switching can occasionally drop a short
-  segment. Tracked in [#4](https://github.com/FlyingFSR/friday/issues/4).
+- **Mixed-language edge cases.** The whole recording is still decoded in a
+  single pass with one auto-detected language. 0.4.0 fixed the two failure modes
+  this caused — Chinese sentences inside English speech being dropped, and
+  English passages being translated into Chinese — but a recovered Chinese
+  insertion can still come back with character errors, and long Chinese
+  narration can leave a few traditional characters in the output, since Friday
+  has no simplified/traditional normalization layer. See the 0.4.0 section of
+  [CHANGELOG.md](CHANGELOG.md) and
+  [docs/language-detection-findings-2026-08.md](docs/language-detection-findings-2026-08.md)
+  for the measurements and the remaining costs.
+- **No terminal punctuation.** Friday deliberately strips a sentence-ending
+  period or question mark from the end of an utterance: it is a guess about your
+  intent, and a wrong guess is worse than none. Punctuation inside the utterance
+  is preserved, and the spoken command "句号" still inserts one explicitly.
 - **VAD is off by default.** Per-segment voice-activity detection is implemented
   end to end but disabled while its accuracy is validated, so the current path is
   a single-pass transcription of the whole recording.
@@ -129,7 +139,8 @@ current state:
 - **Opinionated text cleanup.** Friday currently rewrites words that sound like
   AI coding tools — a standalone "cloud"/"claud" becomes "Claude", and
   "codec"/"cortex"/"code x" become "Codex" — in **all** cleanup modes, with no
-  off switch yet. It also strips runs of Korean (Hangul) and Japanese kana from
+  off switch yet. As of 0.4.0 the same applies to Whisper, macOS, ChatGPT and
+  OpenAI, and to a handful of the maintainer's own vocabulary. It also strips runs of Korean (Hangul) and Japanese kana from
   results as whisper hallucination artifacts, so Friday is currently unsuitable
   for dictating Japanese or Korean. Both behaviors reflect the primary
   maintainer's daily Chinese/English workflow; a user-configurable vocabulary
