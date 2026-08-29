@@ -123,9 +123,10 @@ current state:
 - **No terminal punctuation.** In smart cleanup (the default), Friday
   deliberately strips a sentence-ending period or question mark from the end of
   an utterance: a mark the model produced is a guess about your intent, and a
-  wrong guess is worse than none. Punctuation inside the utterance is preserved,
-  and a spoken 句号 at the end still survives cleanup — saying it is an explicit
-  instruction, not a guess.
+  wrong guess is worse than none. Punctuation inside the utterance is preserved.
+  (If you dictate an explicit 句号 command and the model transcribes it as such,
+  it is treated as an instruction and survives — but whisper does not reliably
+  hear the command word itself, so don't lean on it.)
 - **VAD is off by default.** Per-segment voice-activity detection is implemented
   end to end but disabled while its accuracy is validated, so the current path is
   a single-pass transcription of the whole recording.

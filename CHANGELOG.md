@@ -21,10 +21,11 @@
 - Terminal punctuation at the end of an utterance is now stripped in smart
   cleanup, whether the model or post-processing produced it: a final period or
   question mark is a guess about intent, and the maintainer prefers none over a
-  wrong guess. A mark the user dictated out loud (句号 / 逗号 / 冒号) is an
-  explicit instruction rather than a guess and survives, without doubling a
-  mark the model had already placed in front of it. Interior punctuation,
-  quoted punctuation, and ellipses are preserved.
+  wrong guess. A dictated 句号 / 逗号 / 冒号 that the model transcribes as such
+  is an explicit instruction rather than a guess, so it survives, without
+  doubling a mark the model had already placed in front of it — but whisper does
+  not reliably hear the command word itself, so this is not a dependable escape
+  hatch. Interior punctuation, quoted punctuation, and ellipses are preserved.
 - Vocabulary and cleanup fixes: Chinese video-outro hallucination tails
   (variants of "thanks for watching") are stripped; Whisper / macOS / ChatGPT /
   OpenAI normalization now runs in every cleanup mode; "pool request" ->
