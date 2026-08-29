@@ -143,9 +143,11 @@ current state:
   "codec"/"cortex"/"code x" become "Codex" — in **all** cleanup modes, with no
   off switch yet. As of 0.4.0 the same applies to Whisper, macOS, ChatGPT and
   OpenAI, and to a few of the maintainer's own terms — which means the ordinary
-  English words "sole"/"soul" become "Sol", "fable(s)" becomes "Fable", and
-  "whispers" becomes "Whisper". If you dictate those words in their ordinary
-  sense, they will be replaced. It also strips runs of Korean (Hangul) and
+  English words "sol"/"sole"/"soles"/"soul"/"souls" all become "Sol",
+  "fable"/"fables" become "Fable", and "whisper"/"whispers" become "Whisper"
+  (bare "whisper" is a casing-only rewrite; `whisper.cpp` and `whisper-server`
+  are left alone). If you dictate those words in their ordinary sense, they
+  will be replaced. It also strips runs of Korean (Hangul) and
   Japanese kana from results as whisper hallucination artifacts, so Friday is
   currently unsuitable for dictating Japanese or Korean. Both behaviors reflect
   the primary maintainer's daily Chinese/English workflow; a user-configurable
