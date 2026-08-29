@@ -16,9 +16,13 @@ https://github.com/FlyingFSR/friday/releases/latest
 
 Please avoid posting exploit details publicly.
 
-If GitHub private vulnerability reporting is available for this repository, use
-that path. If not, open a minimal public issue saying you have a security report
-and include only the affected area, not reproduction details or sensitive data.
+GitHub private vulnerability reporting is enabled for this repository. Use it:
+open the **Security** tab and choose **Report a vulnerability**. That is the
+preferred path, and it keeps the details out of public view until a fix is out.
+
+If that form is unreachable for you, open a minimal public issue saying you have
+a security report and include only the affected area, not reproduction details or
+sensitive data.
 
 Useful report details:
 
