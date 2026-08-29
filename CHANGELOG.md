@@ -1,5 +1,52 @@
 # Changelog
 
+## 0.4.0 - Unreleased
+
+### Transcription
+
+- Major accuracy overhaul, validated by a four-round controlled evaluation on
+  21 recorded samples (see docs/language-detection-findings-2026-08.md).
+  Removed two whisper-server launch flags that were silently sabotaging
+  output: `-mc 0` disabled the initial biasing prompt entirely, and
+  `--no-timestamps` caused Chinese sentences embedded in English speech to be
+  dropped and whole English passages to be mistranslated into Chinese.
+  Measured against the previous configuration: Chinese character error rate
+  3.8% -> 2.2%, English word error rate 28.6% -> 3.8%, both English-primary
+  failure modes eliminated, and punctuation on long Chinese narration restored
+  from essentially absent to reference density.
+- Replaced the biasing prompt with an evaluation-tuned variant; each component
+  is load-bearing (documented in the findings file) and guarded by tests.
+- New CJK-aware segment joining for the multi-segment responses produced now
+  that timestamps are enabled.
+- Terminal punctuation at the end of an utterance is now always stripped in
+  smart cleanup, whether the model or post-processing produced it: a final
+  period or question mark is a guess about intent, and the maintainer prefers
+  none over a wrong guess. Interior punctuation, quoted punctuation, and
+  ellipses are preserved.
+- Vocabulary and cleanup fixes: Chinese video-outro hallucination tails
+  (variants of "thanks for watching") are stripped; Whisper / macOS / ChatGPT /
+  OpenAI normalization now runs in every cleanup mode; "pool request" ->
+  "pull request"; a narrow, guarded Chinese homophone fix for booking phrases;
+  Korean/Japanese hallucination removal no longer swallows adjacent legitimate
+  punctuation; a quadratic-cost regex no longer runs on spaceless Chinese text.
+- Removed the dead `.light` cleanup mode (production always used smart);
+  legacy settings containing "light" still migrate safely.
+- Expanded the maintainer's personal vocabulary with Fable, relay, and Sol;
+  every cleanup mode now deliberately normalizes fable and soul/sole variants
+  to Fable and Sol, while relay is left unchanged after transcription.
+
+### Interface
+
+- Added a small push-to-talk key selector to the menu bar and setup assistant.
+  Right Command remains the default; Left Command, Right/Left Option, and Right
+  Control are available for keyboards or workflows where the default is not a
+  good fit.
+
+### Diagnostics
+
+- Local app builds now record the bundled whisper.cpp version and show it in
+  Diagnostics, so issue reports can identify the runtime that produced them.
+
 ## 0.3.5 - 2026-06-17
 
 ### Maintainer field note - 2026-06-20

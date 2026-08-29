@@ -158,10 +158,21 @@ final class WhisperServerManager: WhisperServerManaging {
       "-m", modelPath,
       "--host", host,
       "--port", String(port),
-      "--no-timestamps",
       "-et", "2.4",
       "-lpt", "-1.0",
-      "-mc", "0",
+      // Two flags must stay out of this list:
+      // - "-mc 0" (long form "--max-context 0") silently disables the initial prompt entirely,
+      //   which degrades punctuation and English accuracy.
+      // - "--no-timestamps" (long form of "-nt") caused whole Chinese insertion sentences to be
+      //   dropped from English-primary audio and English passages to be mistranslated. With it
+      //   gone the response text arrives split into segments, which
+      //   TranscriptionService.joinTranscriptSegments reassembles.
+      // These flags and TranscriptionService.mixedLanguagePrompt were validated as one
+      // configuration, so changing any part means re-running the eval matrix. The configuration
+      // is not free: measured against the pre-change baseline it costs roughly 9% latency on
+      // short dictation and 23% on long audio, and yields slightly more traditional-character
+      // output (Friday has no simplified/traditional normalization).
+      // See docs/language-detection-findings-2026-08.md.
       "-sow",
       "-sns"
     ]

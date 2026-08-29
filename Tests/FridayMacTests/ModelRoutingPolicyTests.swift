@@ -111,6 +111,7 @@ private final class RoutingHotkeyService: HotkeyServicing {
   var onRelease: (() -> Void)?
   var isRunning: Bool = true
 
+  func setSelectedHotkey(_ hotkey: PushToTalkKey) {}
   func start() throws {}
   func stop() {}
 }

@@ -29,8 +29,10 @@ extension FridayController {
 
     Task {
       settings = await settingsStore.load()
+      hotkeyService.setSelectedHotkey(settings.pushToTalkKey)
       await migrateAwayFromRetiredModelsIfNeeded()
       cleanupStaleArtifactsOnBootstrap()
+      logRuntimeVersions()
       refreshPermissions()
       startPermissionPolling(duration: 6)
       await refreshInstalledModelsFromDisk()

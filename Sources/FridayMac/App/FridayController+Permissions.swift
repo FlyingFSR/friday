@@ -90,6 +90,21 @@ extension FridayController {
     }
   }
 
+  func setPushToTalkKey(_ hotkey: PushToTalkKey) {
+    guard settings.pushToTalkKey != hotkey else {
+      return
+    }
+
+    Task {
+      let updated = await settingsStore.update { settings in
+        settings.pushToTalkKey = hotkey
+      }
+      hotkeyService.setSelectedHotkey(hotkey)
+      settings = updated
+      log("Push-to-talk key set to \(hotkey.rawValue)")
+    }
+  }
+
   func startHotkeyIfPossible() {
     do {
       try hotkeyService.start()

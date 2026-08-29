@@ -23,6 +23,7 @@ protocol HotkeyServicing: AnyObject {
   var onPress: (() -> Void)? { get set }
   var onRelease: (() -> Void)? { get set }
   var isRunning: Bool { get }
+  func setSelectedHotkey(_ hotkey: PushToTalkKey)
   func start() throws
   func stop()
 }

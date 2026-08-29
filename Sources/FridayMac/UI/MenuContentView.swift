@@ -13,6 +13,16 @@ struct MenuContentView: View {
         set: { controller.setAutoStart($0) }
       ))
 
+      Picker("Push-to-talk key", selection: Binding(
+        get: { controller.settings.pushToTalkKey },
+        set: { controller.setPushToTalkKey($0) }
+      )) {
+        ForEach(PushToTalkKey.allCases) { hotkey in
+          Text(hotkey.displayName).tag(hotkey)
+        }
+      }
+      .pickerStyle(.menu)
+
       Divider()
 
       permissionSection
@@ -47,7 +57,7 @@ struct MenuContentView: View {
           .font(.system(size: 11))
           .foregroundStyle(.secondary)
       }
-      Text("Hold Right Command to talk, release to paste.")
+      Text("Hold \(controller.settings.pushToTalkKey.displayName) to talk, release to paste.")
         .font(.system(size: 11))
         .foregroundStyle(.secondary)
     }

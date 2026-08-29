@@ -35,6 +35,24 @@ struct WhisperServerManagerTests {
     #expect(!args.contains("-vm"))
   }
 
+  @Test(arguments: [nil, "/tmp/ggml-silero.bin"] as [String?])
+  func serverArgumentsNeverDisableTheInitialPrompt(vadModelPath: String?) {
+    // "-mc 0" silently drops the initial prompt entirely, and "--no-timestamps" drops Chinese
+    // insertions out of English-primary audio (2026-08 language-detection eval). Both short and
+    // long forms are rejected so neither can slip back in under its other name.
+    let args = WhisperServerManager.buildServerArguments(
+      modelPath: "/tmp/ggml-medium.bin",
+      vadModelPath: vadModelPath,
+      host: "127.0.0.1",
+      port: 8178
+    )
+
+    #expect(!args.contains("-mc"))
+    #expect(!args.contains("--max-context"))
+    #expect(!args.contains("-nt"))
+    #expect(!args.contains("--no-timestamps"))
+  }
+
   @Test
   func orphanCleanupOnlyTargetsWhisperServerProcesses() {
     let output = """

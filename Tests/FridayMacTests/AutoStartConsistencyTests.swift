@@ -112,6 +112,8 @@ private final class AutoStartMockHotkeyService: HotkeyServicing {
   var onRelease: (() -> Void)?
   var isRunning = false
 
+  func setSelectedHotkey(_ hotkey: PushToTalkKey) {}
+
   func start() throws {
     isRunning = true
   }

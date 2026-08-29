@@ -3,11 +3,16 @@ import ApplicationServices
 import Foundation
 
 final class HotkeyService {
+  enum Transition: Equatable {
+    case pressed
+    case released
+  }
+
   private var eventTap: CFMachPort?
   private var runLoopSource: CFRunLoopSource?
   private var globalMonitor: Any?
   private var isPressed = false
-  private let rightCommandKeyCode: CGKeyCode = 54
+  private(set) var selectedHotkey: PushToTalkKey = .rightCommand
 
   var onPress: (() -> Void)?
   var onRelease: (() -> Void)?
@@ -30,9 +35,10 @@ final class HotkeyService {
     }
 
     globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.flagsChanged]) { [weak self] event in
-      self?.handleFlagsChanged(
+      guard let self else { return }
+      self.handleFlagsChanged(
         keyCode: Int64(event.keyCode),
-        hasCommand: event.modifierFlags.contains(.command)
+        modifierIsActive: self.modifierIsActive(in: event.modifierFlags)
       )
     }
 
@@ -63,6 +69,20 @@ final class HotkeyService {
     eventTap != nil || globalMonitor != nil
   }
 
+  func setSelectedHotkey(_ hotkey: PushToTalkKey) {
+    guard selectedHotkey != hotkey else {
+      return
+    }
+
+    if isPressed {
+      isPressed = false
+      DispatchQueue.main.async { [weak self] in
+        self?.onRelease?()
+      }
+    }
+    selectedHotkey = hotkey
+  }
+
   private func handleEvent(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
     if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
       if let tap = eventTap {
@@ -77,7 +97,7 @@ final class HotkeyService {
 
     handleFlagsChanged(
       keyCode: event.getIntegerValueField(.keyboardEventKeycode),
-      hasCommand: event.flags.contains(.maskCommand)
+      modifierIsActive: modifierIsActive(in: event.flags)
     )
 
     return Unmanaged.passUnretained(event)
@@ -105,21 +125,64 @@ final class HotkeyService {
     )
   }
 
-  private func handleFlagsChanged(keyCode: Int64, hasCommand: Bool) {
-    guard keyCode == Int64(rightCommandKeyCode) else {
-      return
-    }
-
-    if hasCommand && !isPressed {
+  private func handleFlagsChanged(keyCode: Int64, modifierIsActive: Bool) {
+    switch Self.transition(
+      for: selectedHotkey,
+      keyCode: keyCode,
+      modifierIsActive: modifierIsActive,
+      wasPressed: isPressed
+    ) {
+    case .pressed:
       isPressed = true
       DispatchQueue.main.async { [weak self] in
         self?.onPress?()
       }
-    } else if !hasCommand && isPressed {
+    case .released:
       isPressed = false
       DispatchQueue.main.async { [weak self] in
         self?.onRelease?()
       }
+    case nil:
+      break
+    }
+  }
+
+  static func transition(
+    for hotkey: PushToTalkKey,
+    keyCode: Int64,
+    modifierIsActive: Bool,
+    wasPressed: Bool
+  ) -> Transition? {
+    guard keyCode == hotkey.keyCode else {
+      return nil
+    }
+    if wasPressed {
+      // flagsChanged is emitted for the selected physical key's transition.
+      // Release even if the same modifier on the other side is still held.
+      return .released
+    }
+    return modifierIsActive ? .pressed : nil
+  }
+
+  private func modifierIsActive(in flags: CGEventFlags) -> Bool {
+    switch selectedHotkey.modifier {
+    case .command:
+      return flags.contains(.maskCommand)
+    case .option:
+      return flags.contains(.maskAlternate)
+    case .control:
+      return flags.contains(.maskControl)
+    }
+  }
+
+  private func modifierIsActive(in flags: NSEvent.ModifierFlags) -> Bool {
+    switch selectedHotkey.modifier {
+    case .command:
+      return flags.contains(.command)
+    case .option:
+      return flags.contains(.option)
+    case .control:
+      return flags.contains(.control)
     }
   }
 }

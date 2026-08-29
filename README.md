@@ -9,7 +9,7 @@ No cloud, no accounts, no audio ever leaves your Mac. Transcription runs locally
 via [whisper.cpp](https://github.com/ggerganov/whisper.cpp).
 
 <p align="center">
-  <img src="docs/demo.gif" alt="Friday demo — hold Right Command, speak, release" width="500">
+  <img src="docs/demo.gif" alt="Friday demo — hold the push-to-talk key, speak, release" width="500">
 </p>
 
 > Friday lives in your menu bar and stays out of the way until you hold the
@@ -23,7 +23,9 @@ via [whisper.cpp](https://github.com/ggerganov/whisper.cpp).
 
 ## Features
 
-- **Push-to-talk** — hold `Right Command` to record, release to transcribe.
+- **Configurable push-to-talk** — choose Right/Left Command, Right/Left Option,
+  or Right Control; hold to record and release to transcribe. Right Command
+  remains the default.
 - **Fully on-device** — transcription via `whisper.cpp`; audio never leaves your machine.
 - **Paste anywhere** — text is inserted at your cursor, with clipboard restore afterward.
 - **Secure-input aware** — automatically refuses to paste into password fields and other protected contexts.
@@ -55,8 +57,8 @@ On first launch, grant the three permissions macOS requires for a voice-input to
 2. **Accessibility** — to paste into other apps
 3. **Input Monitoring** — to detect the push-to-talk hotkey
 
-Then make sure the **Medium** model is installed, and try it: hold `Right Command`,
-speak, release.
+Then make sure the **Medium** model is installed, choose a push-to-talk key in
+the menu bar or setup assistant, and try it: hold the selected key, speak, release.
 
 ## Install as an App
 

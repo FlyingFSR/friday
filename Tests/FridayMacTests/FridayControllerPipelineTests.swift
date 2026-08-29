@@ -320,6 +320,33 @@ struct FridayControllerPipelineTests {
     #expect(whisperServer.lastModelPath == "/tmp/mock-model.bin")
   }
 
+  @Test
+  func changingPushToTalkKeyPersistsAndReconfiguresListener() async throws {
+    let settingsStore = MockSettingsStore()
+    let hotkeyService = MockHotkeyService()
+    let controller = makeController(
+      settingsStore: settingsStore,
+      permissionService: MockPermissionService(allGranted: true),
+      hotkeyService: hotkeyService,
+      audioCaptureService: MockAudioCaptureService(),
+      pasteService: MockPasteService(),
+      transcriptionService: MockTranscriptionService()
+    )
+
+    controller.setPushToTalkKey(.rightOption)
+    for _ in 0..<20 {
+      if settingsStore.current.pushToTalkKey == .rightOption,
+         hotkeyService.selectedHotkey == .rightOption {
+        break
+      }
+      try await Task.sleep(nanoseconds: 10_000_000)
+    }
+
+    #expect(controller.settings.pushToTalkKey == .rightOption)
+    #expect(settingsStore.current.pushToTalkKey == .rightOption)
+    #expect(hotkeyService.selectedHotkey == .rightOption)
+  }
+
   private func makeController(
     settingsStore: MockSettingsStore,
     permissionService: MockPermissionService,
@@ -389,6 +416,11 @@ private final class MockHotkeyService: HotkeyServicing {
   var onPress: (() -> Void)?
   var onRelease: (() -> Void)?
   var isRunning: Bool = true
+  var selectedHotkey: PushToTalkKey = .rightCommand
+
+  func setSelectedHotkey(_ hotkey: PushToTalkKey) {
+    selectedHotkey = hotkey
+  }
 
   func start() throws {
     isRunning = true

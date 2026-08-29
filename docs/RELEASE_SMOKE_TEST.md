@@ -28,7 +28,7 @@ A quick standalone check that the bundled runtime is self-sufficient (no Homebre
 BIN="dist/Friday.app/Contents/MacOS/whisper-server"
 MODEL="$HOME/Library/Application Support/Friday/models/ggml-medium.bin"
 env -i HOME="$HOME" PATH="/usr/bin:/bin" "$BIN" -m "$MODEL" \
-  --host 127.0.0.1 --port 8190 --no-timestamps &
+  --host 127.0.0.1 --port 8190 -et 2.4 -lpt -1.0 -sow -sns &
 sleep 8 && curl -s http://127.0.0.1:8190/health    # expect HTTP 200
 kill %1
 ```

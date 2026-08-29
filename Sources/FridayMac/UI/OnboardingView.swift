@@ -18,10 +18,25 @@ struct OnboardingView: View {
           .font(.system(size: 13))
           .foregroundStyle(.secondary)
 
+        VStack(alignment: .leading, spacing: 8) {
+          Text("Push-to-talk key")
+            .font(.system(size: 14, weight: .semibold))
+          Picker("Push-to-talk key", selection: Binding(
+            get: { controller.settings.pushToTalkKey },
+            set: { controller.setPushToTalkKey($0) }
+          )) {
+            ForEach(PushToTalkKey.allCases) { hotkey in
+              Text(hotkey.displayName).tag(hotkey)
+            }
+          }
+          .labelsHidden()
+          .pickerStyle(.menu)
+        }
+
         stepCard(
           index: 1,
           title: "Microphone Permission",
-          description: "Needed to record voice while holding Right Command.",
+          description: "Needed to record voice while holding \(controller.settings.pushToTalkKey.displayName).",
           done: controller.permissions.microphone,
           actionTitle: "Grant Microphone",
           action: controller.requestMicrophoneAccess,
@@ -41,7 +56,7 @@ struct OnboardingView: View {
         stepCard(
           index: 3,
           title: "Input Monitoring",
-          description: "Needed for global Right Command hold-to-talk capture.",
+          description: "Needed for global \(controller.settings.pushToTalkKey.displayName) hold-to-talk capture.",
           done: controller.permissions.inputMonitoring,
           actionTitle: "Grant Input Monitoring",
           action: controller.requestInputMonitoringAccess,
@@ -77,7 +92,7 @@ struct OnboardingView: View {
           Spacer()
         }
 
-        Text("Tip: Hold Right Command, speak, release to paste.")
+        Text("Tip: Hold \(controller.settings.pushToTalkKey.displayName), speak, release to paste.")
           .font(.system(size: 12))
           .foregroundStyle(.secondary)
 

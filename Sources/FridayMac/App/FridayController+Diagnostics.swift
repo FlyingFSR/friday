@@ -1,6 +1,14 @@
 import Foundation
 
 extension FridayController {
+  func logRuntimeVersions(bundle: Bundle = .main) {
+    log(
+      RuntimeVersionInfo.diagnosticsSummary(
+        whisperCPPVersion: RuntimeVersionInfo.whisperCPPVersion(in: bundle)
+      )
+    )
+  }
+
   func prepareDiagnosticsLogFileIfNeeded() {
     let directory = diagnosticsLogURL.deletingLastPathComponent()
     try? fileManager.createDirectory(at: directory, withIntermediateDirectories: true)

@@ -1,26 +1,29 @@
 import Foundation
 
 final class PostProcessService {
-  func cleanup(_ rawText: String, mode: TextCleanupMode = .light) -> String {
+  func cleanup(_ rawText: String, mode: TextCleanupMode = .smart) -> String {
     let trimmed = rawText.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.isEmpty else {
       return ""
     }
 
-    // Always normalize Claude / Codex variants regardless of cleanup mode.
-    // For this user the literal words "cloud" / "codec" are almost never
-    // the intended dictation; whisper frequently mis-recognizes "Claude"
-    // and "Codex" as those words. Running this in every mode (including
-    // .none) guarantees the fix even if cleanup is turned off, and also
-    // fixes lowercase "claude" / "codex" → canonical casing.
+    // Always normalize Claude / Codex / Fable / Sol variants regardless of cleanup mode.
+    // Whisper frequently mis-recognizes Claude / Codex, and the user has also
+    // confirmed that Fable / Sol should win over their ordinary-word variants.
+    // Running these in every mode (including .none) guarantees the intended
+    // names and canonical casing even if cleanup is turned off.
     var normalized = normalizeClaudeBrand(in: trimmed)
     normalized = normalizeCodexBrand(in: normalized)
+    normalized = normalizeFableBrand(in: normalized)
+    normalized = normalizeSolBrand(in: normalized)
+    normalized = normalizeWhisperBrand(in: normalized)
+    normalized = normalizeCommonProductTerms(in: normalized)
+    normalized = normalizePullRequestPhrase(in: normalized)
+    normalized = normalizeChineseBookingHomophone(in: normalized)
 
     switch mode {
     case .none:
       return normalized
-    case .light:
-      return cleanupLight(normalized)
     case .smart:
       return cleanupSmart(normalized)
     }
@@ -59,28 +62,110 @@ final class PostProcessService {
     )
   }
 
-  private func cleanupLight(_ trimmed: String) -> String {
-    var text = trimmed
-      .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
-    text = text.replacingOccurrences(of: "\\s+([,\\.!\\?;:，。！？；：])", with: "$1", options: .regularExpression)
-    text = collapseRepeatedPhrases(text)
-    text = collapseRepeatedSentences(text)
+  /// Map the user's confirmed Fable variants to the canonical form.
+  /// Intentionally aggressive: the user has confirmed they only say the Fable
+  /// name itself, so replacing the ordinary English word "fable" is accepted.
+  private func normalizeFableBrand(in text: String) -> String {
+    // Longer variants first; Latin/digit lookarounds avoid matching fragments
+    // inside longer English words while still supporting text glued to CJK.
+    let pattern = "(?<![A-Za-z0-9])(?:fables|faible|fabel|fable)(?![A-Za-z0-9])"
+    return text.replacingOccurrences(
+      of: pattern,
+      with: "Fable",
+      options: [.regularExpression, .caseInsensitive]
+    )
+  }
 
-    guard !text.isEmpty else {
-      return text
-    }
+  /// Map the user's confirmed Sol variants to the canonical form.
+  /// Intentionally aggressive: the user has confirmed they only say the Sol
+  /// name itself, so replacing ordinary "soul" / "sole" words is accepted.
+  private func normalizeSolBrand(in text: String) -> String {
+    // Longer plural variants first; lookarounds keep embedded fragments in
+    // words such as "console", "solution", and "parasol" untouched.
+    let pattern = "(?<![A-Za-z0-9])(?:souls|soles|soul|sole|sol)(?![A-Za-z0-9])"
+    return text.replacingOccurrences(
+      of: pattern,
+      with: "Sol",
+      options: [.regularExpression, .caseInsensitive]
+    )
+  }
 
-    if needsTerminalPunctuation(text) {
-      switch LanguageDetector.detect(in: text) {
-      case .zh:
-        text += preferredTerminalPunctuation(for: text)
-      case .en:
-        text += "."
-      case .mixed, .unknown:
-        break
-      }
+  /// Map common whisper mis-recognitions of "Whisper" itself to the canonical form.
+  /// Intentionally aggressive: the user only ever means the speech-recognition
+  /// engine, so replacing the ordinary English word "whispers" is accepted.
+  private func normalizeWhisperBrand(in text: String) -> String {
+    // Longer variants first so "whispers" isn't partially matched as "whisper".
+    // The ".cpp" / "-" lookaheads keep the lowercase proper nouns this app itself
+    // primes (whisper.cpp, whisper-cli) intact, while a sentence-final
+    // "whisper." still normalizes.
+    let pattern = "(?<![A-Za-z0-9])(?:whispers|wispers|whisper|wisper)(?![A-Za-z0-9])(?!\\.cpp)(?!-)"
+    return text.replacingOccurrences(
+      of: pattern,
+      with: "Whisper",
+      options: [.regularExpression, .caseInsensitive]
+    )
+  }
+
+  /// Canonical casing for the product names the user dictates constantly.
+  /// These were smart-mode-only, but the mis-recognitions (open AI / chat GBT /
+  /// MAC OS) show up in every mode, so they run unconditionally like the brand
+  /// rules above. "Swift" stays smart-mode-only in `normalizePersonalTerms`:
+  /// it is an ordinary English word and too risky to capitalize everywhere.
+  private func normalizeCommonProductTerms(in text: String) -> String {
+    var output = text
+    let replacements = [
+      ("(?<![A-Za-z0-9])open\\s*ai(?![A-Za-z0-9])", "OpenAI"),
+      ("(?<![A-Za-z0-9])chat\\s*(?:gpt|gbt)(?![A-Za-z0-9])", "ChatGPT"),
+      ("(?<![A-Za-z0-9])mac\\s*os(?![A-Za-z0-9])", "macOS")
+    ]
+    for (pattern, replacement) in replacements {
+      output = output.replacingOccurrences(
+        of: pattern,
+        with: replacement,
+        options: [.regularExpression, .caseInsensitive]
+      )
     }
-    return text
+    return output
+  }
+
+  /// Fix the observed "pull request" → "pool request" mis-hear. Deliberately
+  /// contextual: only the word immediately before "request" / "requests" is
+  /// rewritten, so a bare "pool" keeps its ordinary meaning.
+  private func normalizePullRequestPhrase(in text: String) -> String {
+    // Case-sensitive pass first so a sentence-initial "Pool request" keeps its
+    // capital; the case-insensitive pass then covers every other spelling.
+    var output = text.replacingOccurrences(
+      of: "(?<![A-Za-z0-9])Pool(?=\\s+[Rr]equests?(?![A-Za-z0-9]))",
+      with: "Pull",
+      options: .regularExpression
+    )
+    output = output.replacingOccurrences(
+      of: "(?<![A-Za-z0-9])pool(?=\\s+requests?(?![A-Za-z0-9]))",
+      with: "pull",
+      options: [.regularExpression, .caseInsensitive]
+    )
+    return output
+  }
+
+  /// Fix the 订 / 定 homophone in booking contexts (订机票 heard as 定机票).
+  /// Deliberately narrow on both sides: the character must be followed by one of
+  /// a few booking objects, and must not be the tail of a common compound
+  /// (一定 / 决定 / 确定 / 预定 …), which the negative lookbehind list guards.
+  private func normalizeChineseBookingHomophone(in text: String) -> String {
+    // "不" covers 说不定 / 指不定 / 保不定; the rest are ordinary 定-compounds.
+    let compoundPrefixes = "不一决确规肯固稳设指约必否认鉴注制限特既暂裁判核锁选敲商断预假安淡搞内议拟平镇咬界划测审评法原铁笃绑"
+    let bookingObjects = "机票|位子|酒店|餐厅|外卖|车票|门票|房间"
+    // The optional 了 and the optional measure word keep the spoken forms working
+    // ("定个位子" / "提前定了个位子" / "定了一张车票") without widening the booking-object
+    // list itself. Only this fixed middle is allowed, so 定 still has to sit right
+    // in front of the object.
+    let bookingMiddle = "了?(?:一?[个张间])?"
+    let pattern = "(?<![\(compoundPrefixes)])定(\(bookingMiddle))(?=\(bookingObjects))"
+    return text.replacingOccurrences(
+      of: pattern,
+      with: "订$1",
+      options: .regularExpression
+    )
   }
 
   private func cleanupSmart(_ trimmed: String) -> String {
@@ -108,15 +193,32 @@ final class PostProcessService {
     // Intentionally no terminal punctuation in smart mode: the user does not
     // want Friday to guess sentence endings for dictated speech (especially
     // auto-inserting a question mark from heuristics like 吗 / 是不是).
-    return text
+    let normalized = text
       .replacingOccurrences(of: "[ \\t]+\\n", with: "\n", options: .regularExpression)
       .replacingOccurrences(of: "\\n[ \\t]+", with: "\n", options: .regularExpression)
+      .trimmingCharacters(in: .whitespacesAndNewlines)
+    return stripTerminalPunctuation(normalized)
+  }
+
+  /// Drop the sentence-terminal mark the utterance ends with, whoever produced
+  /// it. Whisper now emits its own punctuation, but it cannot hear whether the
+  /// user meant 。 or ？ — the mark is always a guess about intent, and the user's
+  /// explicit rule (2026-08-29) is that no mark beats a guessed one. Internal
+  /// punctuation is untouched: only the very end of the text is trimmed.
+  private func stripTerminalPunctuation(_ text: String) -> String {
+    let terminalMarks: Set<Character> = ["。", "．", ".", "？", "?", "！", "!"]
+    // A run of three or more is a deliberate ellipsis ("..." / "。。。"), not a
+    // sentence ending, so it stays. 中文省略号 …… never matches at all.
+    let trailingRun = text.reversed().prefix(while: { terminalMarks.contains($0) }).count
+    guard (1...2).contains(trailingRun) else {
+      return text
+    }
+    return String(text.dropLast(trailingRun))
       .trimmingCharacters(in: .whitespacesAndNewlines)
   }
 
   private func replaceDictationCommands(in text: String) -> String {
-    var output = text
-    let replacements = [
+    let commands = [
       ("新段落", "\n\n"),
       ("另起一段", "\n\n"),
       ("换行", "\n"),
@@ -126,25 +228,81 @@ final class PostProcessService {
       ("句号", "。")
     ]
 
-    for (spoken, symbol) in replacements {
-      output = output.replacingOccurrences(
-        of: "\\s*\(NSRegularExpression.escapedPattern(for: spoken))\\s*",
-        with: symbol,
-        options: .regularExpression
-      )
+    // These deterministic phrases are high-confidence literal uses of text
+    // that otherwise contains a dictation command. Keep this table narrow:
+    // ambiguous text defaults to command behavior so the primary voice-input
+    // flow remains reliable.
+    let protectedLiteralPhrases = [
+      "换行业",
+      "换行符",
+      "换行键",
+      "换行之后",
+      "下一行动",
+      "句号召",
+      "句号后面",
+      "逗号表达式",
+      "新段落之前",
+      "另起一段之前"
+    ]
+    let protectedRanges = protectedLiteralPhrases.flatMap { literalRanges(of: $0, in: text) }
+
+    let commandPattern = commands
+      .map { NSRegularExpression.escapedPattern(for: $0.0) }
+      .joined(separator: "|")
+    guard let regex = try? NSRegularExpression(
+      pattern: "\\s*(\(commandPattern))\\s*"
+    ) else {
+      return text
     }
+
+    let matches = regex.matches(
+      in: text,
+      range: NSRange(text.startIndex..<text.endIndex, in: text)
+    )
+    var output = ""
+    var cursor = text.startIndex
+
+    for match in matches {
+      guard let fullRange = Range(match.range, in: text),
+            let commandRange = Range(match.range(at: 1), in: text) else {
+        continue
+      }
+
+      output += text[cursor..<fullRange.lowerBound]
+      if protectedRanges.contains(where: { $0.overlaps(commandRange) }) {
+        output += text[fullRange]
+      } else {
+        let spoken = String(text[commandRange])
+        output += commands.first(where: { $0.0 == spoken })?.1 ?? spoken
+      }
+      cursor = fullRange.upperBound
+    }
+
+    output += text[cursor...]
     return output
   }
 
+  private func literalRanges(of literal: String, in text: String) -> [Range<String.Index>] {
+    var ranges: [Range<String.Index>] = []
+    var searchStart = text.startIndex
+
+    while searchStart < text.endIndex,
+          let range = text.range(
+            of: literal,
+            range: searchStart..<text.endIndex
+          ) {
+      ranges.append(range)
+      searchStart = range.upperBound
+    }
+    return ranges
+  }
+
   private func normalizePersonalTerms(in text: String) -> String {
-    // Claude and Codex variants are handled unconditionally in
-    // `cleanup(_:mode:)` via `normalizeClaudeBrand` / `normalizeCodexBrand`;
-    // keep this list focused on smart-mode-only terms.
+    // Brand variants and the always-on product terms (OpenAI / ChatGPT / macOS)
+    // are handled unconditionally in `cleanup(_:mode:)`; keep this list focused
+    // on smart-mode-only terms.
     var output = text
     let replacements = [
-      ("(?<![A-Za-z0-9])open\\s*ai(?![A-Za-z0-9])", "OpenAI"),
-      ("(?<![A-Za-z0-9])chat\\s*(?:gpt|gbt)(?![A-Za-z0-9])", "ChatGPT"),
-      ("(?<![A-Za-z0-9])mac\\s*os(?![A-Za-z0-9])", "macOS"),
       ("(?<![A-Za-z0-9])swift(?![A-Za-z0-9])", "Swift")
     ]
     for (pattern, replacement) in replacements {
@@ -339,6 +497,14 @@ final class PostProcessService {
   }
 
   private func collapseRepeatedPhrases(_ text: String) -> String {
+    // The pattern matches whitespace-separated phrases, so spaceless text can never produce a hit —
+    // but the engine still tries every start/length pair on it, which is quadratic on a long Chinese
+    // paragraph (and joinTranscriptSegments now deliberately glues those into one spaceless run:
+    // ~28ms before joining vs ~263ms after, at 2000 characters). Chinese repeats are
+    // collapseRepeatedSentences' job.
+    guard text.contains(where: \.isWhitespace) else {
+      return text
+    }
     guard let regex = try? NSRegularExpression(
       pattern: "(?i)\\b((?:\\S+\\s+){0,5}\\S+)(?:\\s+\\1){3,}\\b"
     ) else {
@@ -407,44 +573,4 @@ final class PostProcessService {
     return output.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
   }
 
-  private func needsTerminalPunctuation(_ text: String) -> Bool {
-    guard let last = text.last else {
-      return false
-    }
-
-    let punctuation = ".!?。！？"
-    return !punctuation.contains(last)
-  }
-
-  private func preferredTerminalPunctuation(for text: String) -> String {
-    guard containsCJK(text) else {
-      return "."
-    }
-    return looksLikeChineseQuestion(text) ? "？" : "。"
-  }
-
-  private func looksLikeChineseQuestion(_ text: String) -> Bool {
-    let normalized = text.replacingOccurrences(of: "\\s+", with: "", options: .regularExpression)
-    let questionSuffixes = ["吗", "么", "呢"]
-    if questionSuffixes.contains(where: normalized.hasSuffix) {
-      return true
-    }
-
-    let questionPhrases = [
-      "是不是", "有没有", "能不能", "可不可以", "要不要", "会不会", "该不该",
-      "行不行", "是否"
-    ]
-    if questionPhrases.contains(where: normalized.contains) {
-      return true
-    }
-
-    let tailLength = min(12, normalized.count)
-    let tailStart = normalized.index(normalized.endIndex, offsetBy: -tailLength)
-    let tail = String(normalized[tailStart...])
-    let tailQuestionWords = [
-      "为什么", "怎么", "怎样", "如何", "什么", "哪里", "哪儿", "哪个",
-      "哪一个", "谁", "多少", "几"
-    ]
-    return tailQuestionWords.contains(where: tail.contains)
-  }
 }
