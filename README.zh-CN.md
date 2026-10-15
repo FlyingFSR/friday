@@ -9,12 +9,13 @@
 [![CI](https://github.com/FlyingFSR/friday/actions/workflows/ci.yml/badge.svg)](https://github.com/FlyingFSR/friday/actions/workflows/ci.yml)
 [![最新版本](https://img.shields.io/github/v/release/FlyingFSR/friday)](https://github.com/FlyingFSR/friday/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![平台](https://img.shields.io/badge/platform-macOS%2013%2B%20arm64-lightgrey)](#运行要求)
+[![平台](https://img.shields.io/badge/platform-macOS%2014%2B%20arm64-lightgrey)](#运行要求)
 
 **为中英混说而做的 macOS 本地语音输入。** 按住一个键说话,松手,文字就转写好并直接落在
-你正在用的那个应用的光标处。转写全程在本机跑,用的是
-[whisper.cpp](https://github.com/ggerganov/whisper.cpp),不上云、不需要账号、没有任何
-遥测,录音不会离开你的 Mac。
+你正在用的那个应用的光标处。转写全程在本机跑,用的是阿里的
+[Qwen3-ASR](https://huggingface.co/Qwen/Qwen3-ASR-1.7B),在应用内部借助苹果的
+[MLX](https://github.com/ml-explore/mlx-swift) 运行,不上云、不需要账号、没有任何遥测,
+录音不会离开你的 Mac。
 
 <p align="center">
   <img src="docs/demo.gif" alt="Friday 演示 —— 按住快捷键、说话、松手" width="500">
@@ -31,10 +32,10 @@
 ## 功能
 
 - **中英混说听写** —— Friday 存在的理由。一口气里中英文来回切换,句子不会被吞掉;
-  配有品牌词和技术词的偏置与后处理,并在 0.4.0 用一套录好的评测样本调过
-  (中文字错误率 3.8% → 2.2%,英文词错误率 28.6% → 3.8%;详见
-  [评测记录](docs/language-detection-findings-2026-08.md) 和 [已知限制](#已知限制))。
-- **全部在本机跑** —— 用 `whisper.cpp` 转写,录音不出这台机器。
+  配有品牌词和技术词的偏置与后处理。在维护者的 41 段评测录音上,0.5.0 的 Qwen3-ASR
+  引擎比 0.4.0 的 Whisper Medium 错得更少(中文字错误率 2.0% → 1.2%,英文词错误率
+  2.2% → 1.3%),也更快(中位耗时约 1.6 秒 → 0.6 秒);另见 [已知限制](#已知限制)。
+- **全部在本机跑** —— 由应用内的 Qwen3-ASR 转写,录音不出这台机器。
 - **快捷键可选** —— 右/左 Command、右/左 Option、右 Control 任选一个,按住录音、松手转写。
   默认仍是右 Command。
 - **粘到任何地方** —— 文字插在当前光标处,之后会把剪贴板还原回去。
@@ -43,8 +44,8 @@
 
 ## 运行要求
 
-- Apple 芯片的 Mac(macOS 13 及以上)
-- **下载的正式版本不需要额外装东西** —— 安装包里自带了 `whisper-server` 和运行库。
+- Apple 芯片的 Mac(macOS 14 及以上),Friday 运行时要占约 2.3 GB 内存
+- **下载的正式版本不需要额外装东西** —— 第一次设置时应用会自己下载语音模型(约 2.2 GB)。
 
 ## 安装(下载版)
 
@@ -65,36 +66,38 @@
 2. **辅助功能** —— 用来把文字粘进别的应用
 3. **输入监控** —— 用来识别按住快捷键这个动作
 
-然后确认 **Medium** 模型已经装好,在菜单栏或设置向导里选一个快捷键,试一下:
+然后装好 **Qwen3-ASR 1.7B** 模型,在菜单栏或设置向导里选一个快捷键,试一下:
 按住、说话、松手。
 
 ## 模型
 
-- Friday 只带一个转写模型:**Medium**。它在日常中英文听写上够准,内存占用也不重。
-- 模型下载到 `~/Library/Application Support/Friday/models`
-- 下载体积大致是:Medium 约 1.5 GB
-- 语音活动检测(VAD)分段的代码已经完整实现,但当前版本**默认关闭**,还在验证质量;
-  只有开启 VAD 时才会去下载 Silero VAD 模型(参见 [已知限制](#已知限制);设计过程记录在
-  [docs/VAD_CHANGELOG.md](docs/VAD_CHANGELOG.md),语言:英文)
+- Friday 只带一个转写模型:**Qwen3-ASR 1.7B 的 8-bit 版本**(Apache 2.0 许可,阿里
+  通义千问团队),约 2.2 GB。
+- 模型下载到 `~/Library/Application Support/Friday/models/qwen3-asr-1.7b-8bit/`,来源是
+  Hugging Face 上一个锁定的版本;每个文件都要和我们自己用阿里官方原始模型转出来的 8-bit
+  文件比对 SHA-256 校验值,对不上就拒收。
+- 识别语言总是指定好的(默认中文,也可以选英文)。让 Qwen3-ASR 自己判断语言时,它会把
+  混说里的中文翻成英文;指定中文后,英文句子照样写成英文。
+- 从 0.4 升级:Whisper Medium 模型文件原地保留,0.4 的设置文件也不会被改写,所以想退回
+  0.4 不用重新下载,也不用修复什么。
 
 ## 已知限制
 
 Friday 还是早期软件。有几件事我宁可写清楚 —— 这里是简版,带测量数据和推理过程的
 完整版在 [docs/LIMITATIONS.md](docs/LIMITATIONS.md)(语言:英文)。
 
-- **中英混说仍有边角情况。** 整段录音目前还是一次解码、只自动判定一种语言。0.4.0 修掉了
-  英文里的中文插句被整句丢掉、以及整段英文被误翻成中文这两个故障,但被救回来的中文插句
-  仍可能带错字,长段中文叙述里也可能残留几个繁体字。0.4.0 的评测是单一说话人的 21 段
-  样本,不是通用基准。
+- **中英混说仍有边角情况。** 在 50 段「一句中文、一句英文」的短录音上,第二句全都保住了,
+  也没有一句被翻译。但目前所有测试都是同一个人在安静房间里录的,不是通用基准;别人的
+  声音、嘈杂环境都还没测过。
 - **句末不加标点。** 默认的 smart 清理会故意去掉一句话末尾的句号或问号:模型给出的那个
   标点只是在猜你的意图,猜错比不给更糟。句子内部的标点会保留。
 - **未签名,且只支持 Apple 芯片。** 发布包还没签名和公证,第一次打开要走「仍要打开」。
-  只支持 Apple 芯片上的 macOS 13+,没有 Intel 版本。
-- **只有一个模型,VAD 也关着。** Friday 只带 Medium —— Large v3 和 Turbo 都已退役,
-  老用户会被自动迁移过去。逐段的语音活动检测已经实现,但在准确性验证完之前保持关闭。
+  只支持 Apple 芯片上的 macOS 14+,没有 Intel 版本。
+- **内存占用。** Friday 运行期间模型一直在内存里:常驻约 2.3 GB,转写长录音时更高
+  (0.4 的 Whisper 约 1 GB)。
 - **文本清理很有主见。** Friday 会在**所有**清理模式下改写听起来像 AI 工具名的词
   (cloud → Claude、codec → Codex 等等),目前没有开关 —— 也就是说,一些普通英文单词
-  也会被替换掉。它还会把韩文和日文假名的连续片段当作幻觉产物删掉,所以 Friday 目前
+  也会被替换掉。它还会把韩文和日文假名的连续片段删掉(Whisper 时代留下的过滤),所以 Friday 目前
   不适合用来听写这两种语言。可自定义词表已经在计划里。
 
 提 issue 之前建议先看一遍[完整清单](docs/LIMITATIONS.md):其中好几条是有意为之的。
@@ -106,19 +109,15 @@ Friday 从设计上就是本地优先。你的录音在自己的机器上转写,
 
 ## 开发
 
-从源码构建还需要在 `PATH` 上有 whisper.cpp 的 `whisper-server`
-(比如 `/opt/homebrew/bin/whisper-server`)。用这个脚本装:
+从源码构建只需要苹果的命令行开发工具,不需要 Xcode。构建时加 `--build-system native`,
+它会跳过 MLX 的 Metal 源码;再取一份配套的、预先编好的 Metal 着色器库(来自 PyPI 上苹果
+官方的 `mlx-metal` 包,按校验值锁定):
 
 ```bash
-bash scripts/setup-whisper.sh   # 如果有 Homebrew,会走 brew install whisper-cpp
-```
-
-然后:
-
-```bash
-swift build          # 构建
-swift test           # 跑测试
-swift run FridayMac  # 运行
+swift build --build-system native              # 构建
+swift test --build-system native               # 跑测试
+bash scripts/fetch-mlx-metallib.sh --dev       # 把着色器库放到构建产物旁边
+.build/debug/FridayMac                         # 运行
 ```
 
 从源码第一次启动,同样要授予那三项权限、装好模型,步骤见[安装(下载版)](#安装下载版)。
@@ -127,7 +126,7 @@ swift run FridayMac  # 运行
 
 ```bash
 pkill -f FridayMac || true
-swift build
+swift build --build-system native
 .build/debug/FridayMac &
 ```
 
@@ -187,7 +186,8 @@ Friday 最早是一个私人的 macOS 原型,起因很普通:我想口述笔记�
 公开仓库还很年轻,但这个项目不是一天做出来的演示。开源之前,Friday 经历了几个月的
 日常使用迭代:菜单栏应用外壳、按住说话的录音、粘贴后还原剪贴板、权限引导、安全输入
 检查、本地模型管理、中英混合文本清理、VAD 实验,以及从只能开发时用的 whisper 配置
-搬到自带 `whisper-server` 的发布包。
+搬到自带 `whisper-server` 的发布包。到了 0.5,语音引擎本身也换了:从 whisper.cpp
+换成在应用内部运行的 Qwen3-ASR。
 
 这段经历也是 README 为什么把限制写得这么具体的原因。Friday 已经好用到能真正派上用场,
 但它仍然是早期的公开软件:未签名的预览版、中英混说的边角情况、以及一些键盘兼容性的

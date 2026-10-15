@@ -22,7 +22,6 @@ sign_app_bundle_with_developer_id() {
     codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$binary"
   done < <(find "$APP_BUNDLE/Contents/Frameworks" -type f -name '*.dylib' -print0)
 
-  codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$APP_BUNDLE/Contents/MacOS/whisper-server"
   codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$APP_BUNDLE"
   codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE"
 }

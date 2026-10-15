@@ -339,6 +339,59 @@ struct PostProcessServiceTests {
   }
 
   @Test
+  func cleanupNormalizesMainstreamAINamesInEveryMode() {
+    let input = "deep seek kimmy qwen q wen gemini anthropic grok llama mistral mini max mid journey glm gpt-5 chat gpt"
+    let expected = "DeepSeek Kimi Qwen Qwen Gemini Anthropic Grok Llama Mistral MiniMax Midjourney GLM GPT-5 ChatGPT"
+    #expect(service.cleanup(input, mode: .none) == expected)
+    #expect(service.cleanup("今天用deepseek和kimi对比一下", mode: .smart) == "今天用DeepSeek和Kimi对比一下")
+  }
+
+  @Test
+  func cleanupNormalizesObservedAINameMisrecognitions() {
+    let input = "今天我们来用 DeepSync 和 Kimi 对比一下 Qn 签问"
+    #expect(service.cleanup(input, mode: .smart) == "今天我们来用 DeepSeek 和 Kimi 对比一下 Qwen 千问")
+    #expect(service.cleanup("今天我们来用 DeepSeq 和 Kimi 对比一下 Qwen 千问", mode: .smart) == "今天我们来用 DeepSeek 和 Kimi 对比一下 Qwen 千问")
+    #expect(service.cleanup("deep sync deepseq deep seeq deep-seak deepsik", mode: .none) == "DeepSeek DeepSeek DeepSeek DeepSeek DeepSeek")
+    #expect(service.cleanup("deepsequence deepsick", mode: .none) == "deepsequence deepsick")
+    #expect(service.cleanup("去庙里求签问卜", mode: .none) == "去庙里求签问卜")
+  }
+
+  @Test
+  func cleanupNormalizesReadAloudListMisrecognitions() {
+    #expect(service.cleanup("用 Kemi 对比一下同意千问", mode: .smart) == "用 Kimi 对比一下通义千问")
+    #expect(service.cleanup("QWin 和 Q win 都是 Qwen", mode: .none) == "Qwen 和 Qwen 都是 Qwen")
+    #expect(service.cleanup("Hiku 虽然便宜", mode: .none) == "Haiku 虽然便宜")
+    #expect(service.cleanup("马斯克那个Grock最近更新了吗", mode: .none) == "马斯克那个Grok最近更新了吗")
+    #expect(service.cleanup("Meta 的 Lama 和法国的 Mistral", mode: .none) == "Meta 的 Llama 和法国的 Mistral")
+    #expect(service.cleanup("MiniMax 和质朴的 GLM", mode: .none) == "MiniMax 和智谱的 GLM")
+    #expect(service.cleanup("GPT5 和 gpt 4o 还有 GPT-5", mode: .none) == "GPT-5 和 GPT-4o 还有 GPT-5")
+    #expect(service.cleanup("用 DeepSec 对比 Qoan", mode: .none) == "用 DeepSeek 对比 Qwen")
+    #expect(service.cleanup("HaiCoo 和 hai coo 虽然便宜", mode: .none) == "Haiku 和 Haiku 虽然便宜")
+    #expect(service.cleanup("文心一言和腾讯混源", mode: .none) == "文心一言和腾讯混元")
+    #expect(service.cleanup("查资料我一般用 Pervlexity 和 Pervoluxity", mode: .none) == "查资料我一般用 Perplexity 和 Perplexity")
+  }
+
+  @Test
+  func cleanupKeepsOrdinaryWordsNearReadAloudListRules() {
+    #expect(service.cleanup("我同意他的看法，这个人很质朴", mode: .none) == "我同意他的看法，这个人很质朴")
+    #expect(service.cleanup("the Dalai Lama visited", mode: .none) == "the Dalai Lama visited")
+    #expect(service.cleanup("ChatGPT 5 很好用", mode: .none) == "ChatGPT 5 很好用")
+  }
+
+  @Test
+  func cleanupLeavesAINamesInsideLongerWordsUntouched() {
+    let input = "deepseeker kimino qwenty geminis grokking llamas"
+    #expect(service.cleanup(input, mode: .none) == input)
+  }
+
+  @Test
+  func cleanupCapitalizesOrdinaryWordAINamesInSmartModeOnly() {
+    let input = "opus sonnet haiku cursor copilot perplexity"
+    #expect(service.cleanup(input, mode: .none) == input)
+    #expect(service.cleanup("用 opus 和 sonnet 还有 cursor 跟 co-pilot 试试", mode: .smart) == "用 Opus 和 Sonnet 还有 Cursor 跟 Copilot 试试")
+  }
+
+  @Test
   func cleanupLeavesSwiftCapitalizationToSmartModeOnly() {
     #expect(service.cleanup("swift", mode: .none) == "swift")
     #expect(service.cleanup("写 swift 代码", mode: .smart) == "写 Swift 代码")
@@ -469,5 +522,20 @@ struct PostProcessServiceTests {
   @Test
   func cleanupNoneKeepsTerminalPunctuationAsRawOutputEscapeHatch() {
     #expect(service.cleanup("今天天气不错。", mode: .none) == "今天天气不错。")
+  }
+
+  @Test
+  func qwenSpellingsOfAINamesAreNormalized() {
+    // Forms Qwen3-ASR produced in docs/qwen3-asr-eval-2026-10.md.
+    #expect(service.cleanup("今天我们来用 DeepSeek 和 Kimi 对比一下，通一千万。", mode: .none)
+      == "今天我们来用 DeepSeek 和 Kimi 对比一下，通义千问。")
+    #expect(service.cleanup("GPT五和Codex，我每天都在用。", mode: .none) == "GPT-5和Codex，我每天都在用。")
+  }
+
+  @Test
+  func ordinaryNumbersNearTheQwenRulesSurvive() {
+    #expect(service.cleanup("流通一千万股", mode: .none) == "流通一千万股")
+    #expect(service.cleanup("开通一千万的额度", mode: .none) == "开通一千万的额度")
+    #expect(service.cleanup("GPT 四个版本", mode: .none) == "GPT 四个版本")
   }
 }

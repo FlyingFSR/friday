@@ -1,49 +1,48 @@
 import Foundation
+import Qwen3ASR
 
 final class TranscriptionService {
-  private let whisperServer: any WhisperServerManaging
+  private let speechEngine: any SpeechEngineControlling
   private let modelManager: any ModelManaging
-  // Evidence-tuned initial prompt ("P6" in the 2026-08 language-detection eval; see
-  // docs/language-detection-findings-2026-08.md). Every part is load-bearing:
-  // - The Chinese example sentence protects long Chinese audio; a bare brand list destroyed it.
-  // - The single short English clause is the active ingredient for recognizing "Claude" and for
-  //   keeping English audio from being mistranslated into Chinese.
-  // - Longer English prose is not an upgrade: it makes Chinese audio get translated into English.
-  // This prompt and the server's flag set were validated as one configuration (the server must
-  // not be launched with "-mc 0", which disables the prompt outright). It is not free: measured
-  // against the pre-change baseline it costs roughly 9% latency on short dictation and 23% on
-  // long audio, and yields slightly more traditional characters. Details in the findings doc.
-  // Do not edit casually — any change has to be re-validated against the full eval matrix.
-  static let mixedLanguagePrompt =
-    "Friday Codex Claude Fable relay Sol ChatGPT OpenAI Whisper whisper.cpp macOS Swift Git VAD React component " +
-    "system prompt pull request voice input flow。" +
-    "今天我用 Claude 写一个 React component，然后让 Codex review 这个 pull request。" +
-    "I use Claude every day。"
+
+  /// Hot words passed to Qwen3-ASR as context. Same vocabulary as the Whisper prompt Friday used
+  /// through 0.4, without its example sentences (those were Whisper-specific). Measured in
+  /// docs/qwen3-asr-eval-2026-10.md: with the language forced to Chinese, these lift name accuracy
+  /// without causing translation; they can occasionally pull a similar-sounding word toward a hot
+  /// word (Cursor -> Claude once in 41 recordings).
+  static let hotWords =
+    "Friday Codex Claude Fable relay Sol ChatGPT OpenAI DeepSeek Qwen 通义千问 Haiku Whisper whisper.cpp " +
+    "macOS Swift Git VAD React component system prompt pull request voice input flow"
 
   private static let blankAudioMarker = "[BLANK_AUDIO]"
 
-  init(whisperServer: any WhisperServerManaging, modelManager: any ModelManaging) {
-    self.whisperServer = whisperServer
+  init(speechEngine: any SpeechEngineControlling, modelManager: any ModelManaging) {
+    self.speechEngine = speechEngine
     self.modelManager = modelManager
   }
 
   func transcribe(request: TranscriptionRequest) async throws -> TranscriptionResult {
     let startedAt = Date()
-    _ = try await modelManager.ensureModelInstalled(request.model)
+    let modelDirectory = try await modelManager.ensureModelInstalled(request.model)
+    try await speechEngine.load(modelDirectory: modelDirectory)
 
-    guard whisperServer.isReady else {
-      throw TranscriptionFailure(reason: FridayError.whisperServerUnavailable.localizedDescription)
+    let wavData = try Data(contentsOf: URL(fileURLWithPath: request.wavPath))
+    guard let audio = PCM16Audio(wavData: wavData), audio.sampleRate == 16_000 else {
+      throw TranscriptionFailure(reason: "recording is not 16 kHz mono 16-bit PCM")
     }
 
-    let normalizedLanguage = request.language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-    let resolvedLanguage = normalizedLanguage.isEmpty ? "auto" : normalizedLanguage
+    let output = try await speechEngine.transcribe(
+      samples: audio.floatSamples,
+      language: Self.engineLanguage(for: request.language),
+      context: Self.hotWords
+    )
+    let diagnostics = output.finishReasons.contains("length")
+      ? ["engine stopped at the token limit (finish=\(output.finishReasons.joined(separator: ",")))"]
+      : []
 
-    // Keep the request path single-pass; optional VAD now runs inside whisper-server.
-    let outputText = try await transcribeSingle(wavPath: request.wavPath, language: resolvedLanguage)
-
-    let trimmed = outputText.trimmingCharacters(in: .whitespacesAndNewlines)
+    let trimmed = Self.cleanTranscript(output.text)
     guard !trimmed.isEmpty else {
-      throw TranscriptionFailure(reason: "empty output")
+      throw TranscriptionFailure(reason: "empty output", diagnostics: diagnostics)
     }
 
     let durationMs = Int(Date().timeIntervalSince(startedAt) * 1000)
@@ -51,71 +50,37 @@ final class TranscriptionService {
       text: trimmed,
       detectedLanguage: LanguageDetector.detect(in: trimmed),
       durationMs: durationMs,
-      diagnostics: []
+      diagnostics: diagnostics
     )
   }
 
-  // MARK: - HTTP transcription
-
-  private func transcribeSingle(wavPath: String, language: String) async throws -> String {
-    let wavData = try Data(contentsOf: URL(fileURLWithPath: wavPath))
-    return try await postToServer(wavData: wavData, language: language)
+  /// Qwen3-ASR must be told the language: left to detect it, it translated Chinese inside mixed
+  /// dictation into English (docs/qwen3-asr-eval-2026-10.md). "Chinese" still keeps English
+  /// sentences in English. Only an explicit English setting selects English.
+  static func engineLanguage(for setting: String) -> String {
+    switch setting.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+    case "en", "english":
+      return "English"
+    default:
+      return "Chinese"
+    }
   }
 
-  private func postToServer(wavData: Data, language: String) async throws -> String {
-    let inferenceURL = whisperServer.baseURL.appendingPathComponent("inference")
-    let boundary = UUID().uuidString
-
-    var body = Data()
-    appendFormField(&body, boundary: boundary, name: "file", filename: "audio.wav", contentType: "audio/wav", data: wavData)
-    appendTextField(&body, boundary: boundary, name: "response_format", value: "json")
-    appendTextField(&body, boundary: boundary, name: "language", value: language)
-    appendTextField(&body, boundary: boundary, name: "temperature", value: "0.0")
-    appendTextField(&body, boundary: boundary, name: "temperature_inc", value: "0.0")
-    // Always send the brand-name biasing prompt. Previously this was gated
-    // on language=="auto", which left zh/en modes without any "Claude" /
-    // "Codex" hint — a major reason whisper produces "cloud" for "Claude".
-    appendTextField(&body, boundary: boundary, name: "prompt", value: Self.mixedLanguagePrompt)
-    body.append(Data("--\(boundary)--\r\n".utf8))
-
-    var request = URLRequest(url: inferenceURL)
-    request.httpMethod = "POST"
-    request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-    request.httpBody = body
-    request.timeoutInterval = 120
-
-    let (data, response) = try await URLSession.shared.data(for: request)
-
-    guard let http = response as? HTTPURLResponse else {
-      throw TranscriptionFailure(reason: "unexpected response type from whisper-server")
-    }
-    guard (200...299).contains(http.statusCode) else {
-      let errorBody = String(data: data, encoding: .utf8) ?? ""
-      throw TranscriptionFailure(reason: "whisper-server returned HTTP \(http.statusCode): \(errorBody)")
-    }
-
-    guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-          let text = json["text"] as? String else {
-      throw TranscriptionFailure(reason: "invalid JSON response from whisper-server")
-    }
-
-    let cleaned = Self.stripTrailingHallucination(
-      Self.stripHallucinatedText(
-        Self.joinTranscriptSegments(
-          text.replacingOccurrences(of: Self.blankAudioMarker, with: "")
+  /// Collapses stray whitespace and strips the hallucination patterns Whisper produced. Kept as a
+  /// cheap safety net for the Qwen3-ASR engine until real use shows whether it is still needed.
+  static func cleanTranscript(_ text: String) -> String {
+    stripTrailingHallucination(
+      stripHallucinatedText(
+        joinTranscriptSegments(
+          text.replacingOccurrences(of: blankAudioMarker, with: "")
         )
       )
-    )
-    return cleaned
+    ).trimmingCharacters(in: .whitespacesAndNewlines)
   }
 
-  /// Reassemble whisper-server's per-segment output into one line.
-  ///
-  /// Friday runs the server with timestamps on (see WhisperServerManager.buildServerArguments),
-  /// so the JSON `text` field arrives split across segments: newlines between them and stray
-  /// double spaces where a segment already began with one. Every run of whitespace collapses to
-  /// a single space, except between two CJK characters — Chinese needs no word separator, and an
-  /// injected space would survive into the user's document.
+  /// Collapse every run of whitespace to a single space, except between two CJK characters —
+  /// Chinese needs no word separator, and an injected space would survive into the user's
+  /// document. (Written for whisper-server's per-segment output; harmless on Qwen3-ASR text.)
   static func joinTranscriptSegments(_ text: String) -> String {
     var output = ""
     var pendingWhitespace = false
@@ -273,21 +238,5 @@ final class TranscriptionService {
       return ""
     }
     return isCJKJoinable(previous) && isCJKJoinable(next) ? "" : " "
-  }
-
-  // MARK: - Multipart helpers
-
-  private func appendFormField(_ body: inout Data, boundary: String, name: String, filename: String, contentType: String, data: Data) {
-    body.append(Data("--\(boundary)\r\n".utf8))
-    body.append(Data("Content-Disposition: form-data; name=\"\(name)\"; filename=\"\(filename)\"\r\n".utf8))
-    body.append(Data("Content-Type: \(contentType)\r\n\r\n".utf8))
-    body.append(data)
-    body.append(Data("\r\n".utf8))
-  }
-
-  private func appendTextField(_ body: inout Data, boundary: String, name: String, value: String) {
-    body.append(Data("--\(boundary)\r\n".utf8))
-    body.append(Data("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n".utf8))
-    body.append(Data("\(value)\r\n".utf8))
   }
 }

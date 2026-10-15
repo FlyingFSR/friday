@@ -1,41 +1,27 @@
 # Release Smoke Test
 
 Friday's highest-risk behavior depends on a real macOS environment (permissions,
-hotkey capture, whisper runtime, paste), which unit tests can't cover. Run this
-checklist on a **clean** Apple Silicon Mac — ideally a fresh user account with no
-Homebrew whisper.cpp on `PATH` — before publishing a release.
+hotkey capture, the MLX runtime, paste), which unit tests can't cover. Run this
+checklist on a **clean** Apple Silicon Mac — ideally a fresh user account — before
+publishing a release.
 
 Tick every box. If anything fails, do not publish.
 
 ## 0. Package sanity (can run on the build machine)
 
 - [ ] `bash scripts/build-local-app.sh` completes without error.
-- [ ] `dist/Friday.app/Contents/MacOS/whisper-server` exists and is executable.
-- [ ] `otool -L dist/Friday.app/Contents/MacOS/whisper-server` shows **no**
-      `@rpath/lib{whisper,ggml}` lines (all whisper libs resolve via
-      `@executable_path/../Frameworks`). The build script's packaging guards also
-      check both of these and fail the build otherwise.
+- [ ] `dist/Friday.app/Contents/Resources/mlx-swift_Cmlx.bundle/default.metallib`
+      exists and is not empty. MLX loads its GPU shaders from this file; without
+      it the first dictation fails. The build script's packaging guard also
+      checks this and fails the build otherwise.
 - [ ] `codesign --verify --deep --strict --verbose=2 dist/Friday.app` passes.
-      This catches broken nested-code signatures for `whisper-server` and the
-      bundled `libwhisper` / `libggml` libraries before a release asset ships.
 - [ ] The release zip unzips to a `Friday.app` that opens in Finder.
 - [ ] After unzipping the release zip, run the same `codesign --verify --deep
       --strict --verbose=2 /path/to/Friday.app` check on the unzipped app.
 
-A quick standalone check that the bundled runtime is self-sufficient (no Homebrew):
-
-```bash
-BIN="dist/Friday.app/Contents/MacOS/whisper-server"
-MODEL="$HOME/Library/Application Support/Friday/models/ggml-medium.bin"
-env -i HOME="$HOME" PATH="/usr/bin:/bin" "$BIN" -m "$MODEL" \
-  --host 127.0.0.1 --port 8190 -et 2.4 -lpt -1.0 -sow -sns &
-sleep 8 && curl -s http://127.0.0.1:8190/health    # expect HTTP 200
-kill %1
-```
-
 ## 1. Fresh install
 
-- [ ] Download the published zip on a clean Apple Silicon Mac (macOS 13+).
+- [ ] Download the published zip on a clean Apple Silicon Mac (macOS 14+).
 - [ ] Unzip and move `Friday.app` to `/Applications`.
 - [ ] First launch of the **unsigned** build: click **Done** on the Gatekeeper
       warning, then use **System Settings** -> **Privacy & Security** ->
@@ -59,11 +45,10 @@ kill %1
 
 ## 4. Model
 
-- [ ] Medium model installs (download in onboarding) or a bundled model is
-      detected, and the app reports it as ready.
-- [ ] Model policy shows a realistic download size: Medium ~1.5 GB.
-- [ ] whisper-server starts after the model is ready (no "whisper-server not
-      found / failed to start" error).
+- [ ] The Qwen3-ASR 1.7B model installs (download in onboarding, about 2.2 GB)
+      and the app reports it as ready.
+- [ ] The first dictation after launch succeeds (no "Failed to load the default
+      metallib" or model-load error).
 
 ## 5. Core dictation
 
@@ -75,6 +60,9 @@ kill %1
       is inserted at the cursor.
 - [ ] Repeat with one short Chinese sentence.
 - [ ] Repeat with one mixed sentence (e.g. "今天用 Claude 写一个 React component").
+- [ ] Say one short Chinese sentence, pause briefly, then one short English
+      sentence (e.g. "我觉得这个方案还行。The quick fix worked.") -> **both**
+      sentences appear, each in its own language. Repeat in the other order.
 - [ ] No spurious trailing "Thank you / Bye" or stray Korean/Japanese characters.
 
 ## 6. Paste safety

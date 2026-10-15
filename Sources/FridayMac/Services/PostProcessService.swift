@@ -116,7 +116,45 @@ final class PostProcessService {
     let replacements = [
       ("(?<![A-Za-z0-9])open\\s*ai(?![A-Za-z0-9])", "OpenAI"),
       ("(?<![A-Za-z0-9])chat\\s*(?:gpt|gbt)(?![A-Za-z0-9])", "ChatGPT"),
-      ("(?<![A-Za-z0-9])mac\\s*os(?![A-Za-z0-9])", "macOS")
+      ("(?<![A-Za-z0-9])mac\\s*os(?![A-Za-z0-9])", "macOS"),
+      // Mainstream AI companies / models. Only names that are not ordinary
+      // English words live here; ordinary-word names (Opus, Cursor …) are
+      // smart-mode-only in `normalizePersonalTerms`. "gbt" is the same mis-hear
+      // seen in "chat GBT".
+      // "deep sync" / "deepseq" / "qn" / 签问 are observed mis-hears from the user's
+      // dictation (seeq / seak / sik are close spellings of the same sound);
+      // 签问 skips 求签问卜 / 抽签问… where it is the ordinary phrase.
+      // From the 2026-10 read-aloud list: kemi / qwin / hiku / grock / lama, plus
+      // 同意千问 and 质朴 GLM; round two added deepsec / qoan / haicoo / 混源. 同意 and 质朴 are ordinary words, so those two are only
+      // rewritten right in front of 千问 / GLM; "lama" keeps "Dalai Lama".
+      ("(?<![A-Za-z0-9])deep[\\s-]*(?:seek|seeq|seak|seq|sec|sik|sync)(?![A-Za-z0-9])", "DeepSeek"),
+      ("(?<![A-Za-z0-9])(?:kimi|kimmy|kemi)(?![A-Za-z0-9])", "Kimi"),
+      ("(?<![A-Za-z0-9])(?:q[\\s-]*w[ei]n|qn|qoan)(?![A-Za-z0-9])", "Qwen"),
+      ("(?<![求抽])签问", "千问"),
+      ("[通同][义意]千问", "通义千问"),
+      // Qwen3-ASR writes 通义千问 as 通一千万 (2 of 3 recordings, docs/qwen3-asr-eval-2026-10.md).
+      // 通一千万 is otherwise only the tail of 流通/开通/打通… 一千万, which stays.
+      ("(?<![流开打交联互畅贯沟融普变])通[一义意]千万", "通义千问"),
+      ("混源", "混元"),
+      // Perplexity itself is smart-mode-only below; these two mis-hears are not words.
+      ("(?<![A-Za-z0-9])(?:pervlexity|pervoluxity)(?![A-Za-z0-9])", "Perplexity"),
+      ("质朴(?=\\s*的?\\s*glm(?![A-Za-z0-9]))", "智谱"),
+      ("(?<![A-Za-z0-9])(?:hiku|hai[\\s-]*coo)(?![A-Za-z0-9])", "Haiku"),
+      ("(?<![A-Za-z0-9])gemini(?![A-Za-z0-9])", "Gemini"),
+      ("(?<![A-Za-z0-9])anthropic(?![A-Za-z0-9])", "Anthropic"),
+      ("(?<![A-Za-z0-9])gro(?:ck|k)(?![A-Za-z0-9])", "Grok"),
+      ("(?<![A-Za-z0-9])(?:llama|(?<!dalai\\s)lama)(?![A-Za-z0-9])", "Llama"),
+      ("(?<![A-Za-z0-9])mistral(?![A-Za-z0-9])", "Mistral"),
+      ("(?<![A-Za-z0-9])mini[\\s-]*max(?![A-Za-z0-9])", "MiniMax"),
+      ("(?<![A-Za-z0-9])mid[\\s-]*journey(?![A-Za-z0-9])", "Midjourney"),
+      ("(?<![A-Za-z0-9])glm(?![A-Za-z0-9])", "GLM"),
+      // "GPT5" / "gpt 4o" → "GPT-5" / "GPT-4o", the official hyphenated spelling.
+      ("(?<![A-Za-z0-9])(?:gpt|gbt)[\\s-]*(?=\\d)", "GPT-"),
+      // Qwen3-ASR writes the version as a Chinese numeral ("GPT五"). Not before a measure
+      // word, where 四/五 is a count ("GPT 四个版本").
+      ("(?<![A-Za-z0-9])(?:gpt|gbt)[\\s-]*四(?![个种次年位款家版名条只岁点分])", "GPT-4"),
+      ("(?<![A-Za-z0-9])(?:gpt|gbt)[\\s-]*五(?![个种次年位款家版名条只岁点分])", "GPT-5"),
+      ("(?<![A-Za-z0-9])(?:gpt|gbt)(?![A-Za-z0-9])", "GPT")
     ]
     for (pattern, replacement) in replacements {
       output = output.replacingOccurrences(
@@ -332,7 +370,14 @@ final class PostProcessService {
     // on smart-mode-only terms.
     var output = text
     let replacements = [
-      ("(?<![A-Za-z0-9])swift(?![A-Za-z0-9])", "Swift")
+      ("(?<![A-Za-z0-9])swift(?![A-Za-z0-9])", "Swift"),
+      // AI product / model names that double as ordinary English words.
+      ("(?<![A-Za-z0-9])opus(?![A-Za-z0-9])", "Opus"),
+      ("(?<![A-Za-z0-9])sonnet(?![A-Za-z0-9])", "Sonnet"),
+      ("(?<![A-Za-z0-9])haiku(?![A-Za-z0-9])", "Haiku"),
+      ("(?<![A-Za-z0-9])cursor(?![A-Za-z0-9])", "Cursor"),
+      ("(?<![A-Za-z0-9])co-?pilot(?![A-Za-z0-9])", "Copilot"),
+      ("(?<![A-Za-z0-9])perplexity(?![A-Za-z0-9])", "Perplexity")
     ]
     for (pattern, replacement) in replacements {
       output = output.replacingOccurrences(

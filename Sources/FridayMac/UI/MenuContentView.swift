@@ -2,7 +2,10 @@ import SwiftUI
 
 struct MenuContentView: View {
   @ObservedObject var controller: FridayController
-  @State private var showingDiagnostics = false
+  // Declared as a plain State value instead of `@State`: from the macOS 27 SDK on, `@State` expands
+  // through a SwiftUI macro plugin that ships only with Xcode, so the attribute spelling stops
+  // building under Command Line Tools alone. SwiftUI manages a stored State the same way.
+  private let showingDiagnostics = State(initialValue: false)
 
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
@@ -43,7 +46,7 @@ struct MenuContentView: View {
     }
     .padding(14)
     .frame(width: 360)
-    .sheet(isPresented: $showingDiagnostics) {
+    .sheet(isPresented: showingDiagnostics.projectedValue) {
       DiagnosticsView(lines: controller.diagnostics)
     }
   }
@@ -96,7 +99,7 @@ struct MenuContentView: View {
       Text("Model")
         .font(.system(size: 12, weight: .semibold))
 
-      ForEach([ModelTier.medium]) { tier in
+      ForEach([ModelTier.qwen3ASR]) { tier in
         if let descriptor = controller.descriptor(for: tier) {
           modelRow(tier: tier, descriptor: descriptor)
         }
@@ -152,7 +155,7 @@ struct MenuContentView: View {
       .controlSize(.small)
 
       Button("Open Diagnostics") {
-        showingDiagnostics = true
+        showingDiagnostics.wrappedValue = true
       }
       .buttonStyle(.borderless)
 

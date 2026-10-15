@@ -8,16 +8,16 @@ welcome, from typo fixes to new features.
 
 You'll need:
 
-- An Apple Silicon Mac running macOS 13 or later
+- An Apple Silicon Mac running macOS 14 or later
 - A recent Swift toolchain (Xcode or the Swift command-line tools)
-- whisper.cpp's `whisper-server` on your `PATH` (`bash scripts/setup-whisper.sh`)
 
 Then:
 
 ```bash
-swift build
-swift test
-swift run FridayMac
+swift build --build-system native
+swift test --build-system native
+bash scripts/fetch-mlx-metallib.sh --dev   # MLX's Metal shader library, next to the binaries
+.build/debug/FridayMac
 ```
 
 ## Project layout
@@ -29,9 +29,10 @@ Sources/FridayMac/
   UI/         # menu bar, HUD, onboarding
   Models/     # settings and pipeline data types
   Utils/      # helpers (e.g. language detection)
+Sources/Qwen3ASR/  # on-device Qwen3-ASR inference on MLX (ported, Apache 2.0)
 Tests/FridayMacTests/
 Resources/    # app icon, Info.plist template
-scripts/      # build / install / release / whisper setup
+scripts/      # build / install / release / MLX shader library
 ```
 
 ## Making a change
@@ -40,7 +41,7 @@ scripts/      # build / install / release / whisper setup
    approach before you invest time.
 2. Create a branch from `main`.
 3. Keep changes focused — one logical change per pull request.
-4. Add or update tests when you change behavior. Run `swift test` before pushing.
+4. Add or update tests when you change behavior. Run `swift test --build-system native` before pushing.
 5. Match the surrounding code style; keep diffs minimal.
 
 ## Pull requests
@@ -48,7 +49,7 @@ scripts/      # build / install / release / whisper setup
 - Describe **what** changed and **why**.
 - Note any manual testing you did (this app interacts with macOS permissions,
   the menu bar, and other apps, so describe the real-world behavior you verified).
-- Make sure `swift build` and `swift test` pass.
+- Make sure `swift build --build-system native` and `swift test --build-system native` pass.
 
 ## A couple of things to know
 

@@ -25,7 +25,7 @@ final class FridayController: ObservableObject {
   let hudController: any HUDControlling
   let modelManager: any ModelManaging
   let transcriptionService: any TranscriptionServicing
-  let whisperServer: any WhisperServerManaging
+  let speechEngine: any SpeechEngineControlling
   let fileManager: FileManager
   let diagnosticsLogURL: URL
 
@@ -61,7 +61,7 @@ final class FridayController: ObservableObject {
     hudController = dependencies.hudController
     modelManager = dependencies.modelManager
     transcriptionService = dependencies.transcriptionService
-    whisperServer = dependencies.whisperServer
+    speechEngine = dependencies.speechEngine
     fileManager = dependencies.fileManager
     let appSupportRoot = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
       ?? fileManager.temporaryDirectory

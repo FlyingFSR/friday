@@ -1,13 +1,13 @@
 import Foundation
 
 enum ModelTier: String, Codable, CaseIterable, Identifiable {
+  /// The only model Friday 0.5 transcribes with.
+  case qwen3ASR = "qwen3-asr-1.7b-8bit"
+  // Whisper models from Friday 0.4. Kept so older settings files decode cleanly and
+  // can be migrated on launch (see FridayController.migrateAwayFromRetiredModelsIfNeeded).
   case base
   case small
   case medium
-  // `largeV3` and `turbo` are retired models. Friday now ships Medium only, but
-  // these cases are kept so older settings files (which may still name them as
-  // the default or an installed model) decode cleanly and can be migrated to
-  // Medium on launch. See FridayController.migrateAwayFromRetiredModelsIfNeeded.
   case largeV3 = "large-v3"
   case turbo = "large-v3-turbo"
 
@@ -15,6 +15,8 @@ enum ModelTier: String, Codable, CaseIterable, Identifiable {
 
   var displayName: String {
     switch self {
+    case .qwen3ASR:
+      return "Qwen3-ASR 1.7B"
     case .base:
       return "Base"
     case .small:
@@ -127,7 +129,7 @@ struct FridaySettings: Codable {
   }
 
   static let `default` = FridaySettings(
-    defaultModel: .medium,
+    defaultModel: .qwen3ASR,
     installedModels: [],
     autoStart: false,
     textCleanup: .smart,

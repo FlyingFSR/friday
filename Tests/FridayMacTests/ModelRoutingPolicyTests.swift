@@ -1,56 +1,49 @@
 import Foundation
+import Qwen3ASR
 import Testing
 @testable import FridayMac
 
 @MainActor
 struct ModelRoutingPolicyTests {
   @Test
-  func selectedMediumStaysOnMedium() {
+  func routesToQwenWhenInstalled() {
+    let controller = makeController()
+    controller.settings.defaultModel = .qwen3ASR
+    controller.settings.installedModels = [.qwen3ASR]
+
+    #expect(controller.resolveTranscriptionModel() == .qwen3ASR)
+  }
+
+  @Test
+  func whisperDefaultRoutesToQwenWhenInstalled() {
     let controller = makeController()
     controller.settings.defaultModel = .medium
-    controller.settings.installedModels = [.medium]
+    controller.settings.installedModels = [.medium, .qwen3ASR]
 
-    #expect(controller.resolveTranscriptionModel() == .medium)
+    #expect(controller.resolveTranscriptionModel() == .qwen3ASR)
   }
 
   @Test
-  func retiredDefaultRoutesToMediumWhenInstalled() {
-    let controller = makeController()
-    controller.settings.defaultModel = .turbo
-    controller.settings.installedModels = [.medium]
-
-    #expect(controller.resolveTranscriptionModel() == .medium)
-  }
-
-  @Test
-  func preferredModelIsNilWhenOnlyRetiredModelsRemain() {
-    // A leftover Turbo weight on disk is not routable anymore; the policy
-    // returns nil so the app prompts the user to install Medium.
+  func preferredModelIsNilWhenOnlyWhisperModelsRemain() {
+    // A Friday 0.4 Whisper file on disk is not routable in 0.5; the policy returns nil
+    // so the app prompts the user to install Qwen3-ASR.
     let preferred = FridayController.preferredTranscriptionModel(
-      defaultModel: .turbo,
-      installedModels: [.turbo]
+      defaultModel: .medium,
+      installedModels: [.medium, .turbo]
     )
     #expect(preferred == nil)
   }
 
   @Test
-  func migratesLargeV3DefaultToMedium() async {
-    let controller = makeController()
-    controller.settings.defaultModel = .largeV3
-    controller.settings.installedModels = [.medium]
+  func migratesWhisperDefaultsToQwen() async {
+    for retired in [ModelTier.medium, .largeV3, .turbo, .base, .small] {
+      let controller = makeController()
+      controller.settings.defaultModel = retired
+      controller.settings.installedModels = [.qwen3ASR]
 
-    await controller.migrateAwayFromRetiredModelsIfNeeded()
-    #expect(controller.settings.defaultModel == .medium)
-  }
-
-  @Test
-  func migratesTurboDefaultToMedium() async {
-    let controller = makeController()
-    controller.settings.defaultModel = .turbo
-    controller.settings.installedModels = [.medium]
-
-    await controller.migrateAwayFromRetiredModelsIfNeeded()
-    #expect(controller.settings.defaultModel == .medium)
+      await controller.migrateAwayFromRetiredModelsIfNeeded()
+      #expect(controller.settings.defaultModel == .qwen3ASR)
+    }
   }
 
   private func makeController(
@@ -70,7 +63,7 @@ struct ModelRoutingPolicyTests {
         hudController: RoutingHUDController(),
         modelManager: RoutingModelManager(),
         transcriptionService: transcriptionService,
-        whisperServer: RoutingWhisperServerManager(),
+        speechEngine: RoutingSpeechEngine(),
         fileManager: .default
       )
     )
@@ -160,11 +153,8 @@ private final class RoutingModelManager: ModelManaging {
     URL(fileURLWithPath: "/tmp/model-\(tier.rawValue).bin")
   }
 
-  func ensureVADModelInstalled() async throws -> URL {
-    URL(fileURLWithPath: "/tmp/vad.bin")
-  }
 
-  func installedModels() async -> [ModelTier] { [.medium] }
+  func installedModels() async -> [ModelTier] { [.qwen3ASR] }
 
   func removeModel(_ tier: ModelTier) async throws -> Bool { false }
 }
@@ -182,13 +172,16 @@ private final class RoutingTranscriptionService: TranscriptionServicing {
   }
 }
 
-private final class RoutingWhisperServerManager: WhisperServerManaging {
-  var isReady = true
-  var baseURL: URL { URL(string: "http://127.0.0.1:8178")! }
+private final class RoutingSpeechEngine: SpeechEngineControlling, @unchecked Sendable {
+  var isLoaded: Bool {
+    get async { true }
+  }
 
-  func start(modelPath: String, vadModelPath: String?) async throws {}
-  func restart() async throws {}
-  func stop() {}
+  func load(modelDirectory: URL) async throws {}
+
+  func transcribe(samples: [Float], language: String, context: String) async throws -> TranscriptionOutput {
+    TranscriptionOutput(text: "", language: language, finishReasons: ["eos"])
+  }
 }
 
 @MainActor

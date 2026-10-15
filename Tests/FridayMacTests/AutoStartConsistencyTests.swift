@@ -1,4 +1,5 @@
 import Foundation
+import Qwen3ASR
 import Testing
 @testable import FridayMac
 
@@ -54,7 +55,7 @@ struct AutoStartConsistencyTests {
         hudController: AutoStartMockHUDController(),
         modelManager: AutoStartMockModelManager(),
         transcriptionService: AutoStartMockTranscriptionService(),
-        whisperServer: AutoStartMockWhisperServerManager(),
+        speechEngine: AutoStartMockSpeechEngine(),
         fileManager: .default
       )
     )
@@ -167,12 +168,9 @@ private final class AutoStartMockModelManager: ModelManaging {
     URL(fileURLWithPath: "/tmp/mock-model.bin")
   }
 
-  func ensureVADModelInstalled() async throws -> URL {
-    URL(fileURLWithPath: "/tmp/mock-vad.bin")
-  }
 
   func installedModels() async -> [ModelTier] {
-    [.medium]
+    [.qwen3ASR]
   }
 
   func removeModel(_ tier: ModelTier) async throws -> Bool {
@@ -186,13 +184,16 @@ private final class AutoStartMockTranscriptionService: TranscriptionServicing {
   }
 }
 
-private final class AutoStartMockWhisperServerManager: WhisperServerManaging {
-  var isReady = true
-  var baseURL: URL { URL(string: "http://127.0.0.1:8178")! }
+private final class AutoStartMockSpeechEngine: SpeechEngineControlling, @unchecked Sendable {
+  var isLoaded: Bool {
+    get async { true }
+  }
 
-  func start(modelPath: String, vadModelPath: String?) async throws {}
-  func restart() async throws {}
-  func stop() {}
+  func load(modelDirectory: URL) async throws {}
+
+  func transcribe(samples: [Float], language: String, context: String) async throws -> TranscriptionOutput {
+    TranscriptionOutput(text: "", language: language, finishReasons: ["eos"])
+  }
 }
 
 @MainActor

@@ -12,42 +12,43 @@ struct ReleaseScriptTests {
   @Test
   func buildScriptDefaultsToCurrentReleaseVersion() throws {
     let script = try read("scripts/build-local-app.sh")
-    #expect(script.contains(#"SHORT_VERSION="${FRIDAY_SHORT_VERSION:-0.4.0}""#))
+    #expect(script.contains(#"SHORT_VERSION="${FRIDAY_SHORT_VERSION:-0.5.0}""#))
   }
 
   @Test
-  func buildScriptBindsHomebrewVersionToSelectedWhisperRuntime() throws {
+  func buildScriptUsesNativeBuildSystemThatSkipsMetalSources() throws {
+    // The default build system tries to compile mlx-swift's .metal files, which needs Xcode's
+    // Metal compiler; the native one skips them and the shader library is bundled instead.
     let script = try read("scripts/build-local-app.sh")
-    #expect(script.contains(#"brew --prefix whisper-cpp"#))
-    #expect(script.contains(#"brew list --versions whisper-cpp"#))
-    #expect(script.contains(#"if [[ "$server_real" != "$brew_prefix_real"/* ]]"#))
-    #expect(script.contains("FRIDAY_WHISPER_CPP_VERSION"))
+    #expect(script.contains("swift build -c release --build-system native \\\n"))
+    #expect(script.contains("swift build -c release --build-system native --show-bin-path"))
   }
 
   @Test
-  func buildScriptFailsWhenVersionCannotBeDetermined() throws {
+  func buildScriptBundlesAndGuardsShaderLibraryBeforeSigning() throws {
     let script = try read("scripts/build-local-app.sh")
-    let detectionRange = try #require(
-      script.range(of: #"WHISPER_CPP_VERSION="$(detect_whisper_cpp_version "$WHISPER_SERVER_SOURCE")""#)
-    )
+    let fetchRange = try #require(script.range(of: #"METALLIB_SOURCE="$(bash "$SCRIPT_DIR/fetch-mlx-metallib.sh")""#))
     let buildRange = try #require(script.range(of: #"echo "Building FridayMac in release mode...""#))
-    #expect(detectionRange.lowerBound < buildRange.lowerBound)
-    #expect(script.contains("Error: cannot determine whisper.cpp version"))
-    #expect(script.contains("Error: Homebrew whisper.cpp version metadata does not match"))
+    let copyRange = try #require(
+      script.range(of: #"cp "$METALLIB_SOURCE" "$METALLIB_BUNDLE_DIR/default.metallib""#)
+    )
+    let guardRange = try #require(script.range(of: #"if [[ ! -s "$METALLIB_BUNDLE_DIR/default.metallib" ]]"#))
+    let signRange = try #require(script.range(of: "sign_app_bundle_ad_hoc", options: .backwards))
+    #expect(fetchRange.lowerBound < buildRange.lowerBound)
+    #expect(copyRange.lowerBound < guardRange.lowerBound)
+    #expect(guardRange.lowerBound < signRange.lowerBound)
+    #expect(script.contains(#"METALLIB_BUNDLE_DIR="$RESOURCES_DIR/mlx-swift_Cmlx.bundle""#))
   }
 
   @Test
-  func buildScriptWritesAndGuardsBundledVersionRecord() throws {
-    let script = try read("scripts/build-local-app.sh")
-    let writeRange = try #require(
-      script.range(of: #"printf '%s\n' "$WHISPER_CPP_VERSION" > "$WHISPER_VERSION_FILE""#)
-    )
-    let guardRange = try #require(
-      script.range(of: #"if [[ ! -s "$WHISPER_VERSION_FILE" ]]"#)
-    )
-    let signRange = try #require(script.range(of: "sign_app_bundle_ad_hoc", options: .backwards))
-    #expect(writeRange.lowerBound < guardRange.lowerBound)
-    #expect(guardRange.lowerBound < signRange.lowerBound)
+  func shaderLibraryIsPinnedToTheMLXCoreInPackageSwift() throws {
+    // mlx-swift 0.32.3 vendors MLX core 0.32.2; its shader library must come from that release.
+    let fetch = try read("scripts/fetch-mlx-metallib.sh")
+    let manifest = try read("Package.swift")
+    #expect(manifest.contains(#"mlx-swift", exact: "0.32.3""#))
+    #expect(fetch.contains(#"VERSION="0.32.2""#))
+    #expect(fetch.contains("3825fff379dbc107dd3413e564a06caeaa24819910ec49c0439e454c06a1b9b8"))
+    #expect(fetch.contains("shasum -a 256 -c"))
   }
 
   @Test

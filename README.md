@@ -9,11 +9,12 @@ English | [中文](README.zh-CN.md)
 [![CI](https://github.com/FlyingFSR/friday/actions/workflows/ci.yml/badge.svg)](https://github.com/FlyingFSR/friday/actions/workflows/ci.yml)
 [![Latest release](https://img.shields.io/github/v/release/FlyingFSR/friday)](https://github.com/FlyingFSR/friday/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-macOS%2013%2B%20arm64-lightgrey)](#requirements)
+[![Platform](https://img.shields.io/badge/platform-macOS%2014%2B%20arm64-lightgrey)](#requirements)
 
 **Local-first macOS dictation built for mixed Chinese-English speech (中英混说).**
-Hold a key, speak, release — your words are transcribed on-device via
-[whisper.cpp](https://github.com/ggerganov/whisper.cpp) and pasted straight into
+Hold a key, speak, release — your words are transcribed on-device by Alibaba's
+[Qwen3-ASR](https://huggingface.co/Qwen/Qwen3-ASR-1.7B), running inside the app on
+Apple's [MLX](https://github.com/ml-explore/mlx-swift), and pasted straight into
 whatever app you're using. No cloud, no account, no telemetry, and no audio
 leaving your Mac.
 
@@ -34,12 +35,12 @@ leaving your Mac.
 
 - **Mixed-language dictation** — the reason Friday exists. Speech that switches
   between Chinese and English in the same breath stays intact, with brand and
-  tech-term biasing plus cleanup, tuned against a recorded evaluation set in
-  0.4.0 (Chinese character error rate 3.8% -> 2.2%, English word error rate
-  28.6% -> 3.8%; see the
-  [findings](docs/language-detection-findings-2026-08.md) and
-  [Known Limitations](#known-limitations)).
-- **Fully on-device** — transcription via `whisper.cpp`; audio never leaves your machine.
+  tech-term biasing plus cleanup. On the maintainer's 41 evaluation recordings,
+  0.5.0's Qwen3-ASR engine made fewer errors than 0.4.0's Whisper Medium
+  (Chinese character error rate 2.0% -> 1.2%, English word error rate 2.2% ->
+  1.3%) and answered faster (median about 1.6 s -> 0.6 s); see
+  [Known Limitations](#known-limitations).
+- **Fully on-device** — transcription by Qwen3-ASR inside the app; audio never leaves your machine.
 - **Configurable push-to-talk** — choose Right/Left Command, Right/Left Option,
   or Right Control; hold to record and release to transcribe. Right Command
   remains the default.
@@ -49,9 +50,10 @@ leaving your Mac.
 
 ## Requirements
 
-- Apple Silicon Mac (macOS 13+)
-- **Downloaded release builds need nothing extra** — the app bundles its own
-  `whisper-server` and runtime libraries.
+- Apple Silicon Mac (macOS 14+), with about 2.3 GB of memory to spare while
+  Friday runs
+- **Downloaded release builds need nothing extra** — the app downloads its speech
+  model (about 2.2 GB) during first-run setup.
 
 ## Install (download)
 
@@ -76,20 +78,23 @@ tool:
 2. **Accessibility** — to paste into other apps
 3. **Input Monitoring** — to detect the push-to-talk hotkey
 
-Then make sure the **Medium** model is installed, choose a push-to-talk key in
+Then install the **Qwen3-ASR 1.7B** model, choose a push-to-talk key in
 the menu bar or setup assistant, and try it: hold the selected key, speak,
 release.
 
 ## Models
 
-- Friday ships a single transcription model: **Medium**. It is accurate on
-  everyday Chinese/English dictation and light on memory.
-- Models download to `~/Library/Application Support/Friday/models`
-- Approximate download size: Medium ~1.5 GB
-- Voice-activity (VAD) segmentation is implemented but **disabled by default** in
-  the current build while its quality is validated; the Silero VAD model is only
-  downloaded if VAD is enabled (see [Known Limitations](#known-limitations), and
-  [docs/VAD_CHANGELOG.md](docs/VAD_CHANGELOG.md) for the design history)
+- Friday ships a single transcription model: **Qwen3-ASR 1.7B, 8-bit**
+  (Apache 2.0, Alibaba Qwen team), about 2.2 GB.
+- It downloads to `~/Library/Application Support/Friday/models/qwen3-asr-1.7b-8bit/`
+  from a pinned Hugging Face revision, and every file is checked against a
+  SHA-256 value computed from our own 8-bit conversion of Alibaba's official
+  checkpoint; anything that does not match is rejected.
+- The language is always set (Chinese, unless you choose English). Left to detect
+  the language itself, Qwen3-ASR translated Chinese inside mixed dictation into
+  English; set to Chinese, it still writes English sentences in English.
+- Upgrading from 0.4: the Whisper Medium file is left in place and 0.4's settings
+  file is not rewritten, so going back to 0.4 needs no download or repair.
 
 ## Known Limitations
 
@@ -97,28 +102,24 @@ Friday is early software. A few things are intentionally honest about their
 current state — the short version is here, the full version with measurements and
 reasoning is in [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
 
-- **Mixed-language edge cases.** The whole recording is still decoded in a single
-  pass with one auto-detected language. 0.4.0 fixed dropped Chinese insertions
-  and mistranslated English passages, but a recovered Chinese insertion can still
-  come back with character errors, and long Chinese narration can leave a few
-  traditional characters in the output. The 0.4.0 evaluation is 21 samples from a
-  single speaker, not a general benchmark.
+- **Mixed-language edge cases.** On 50 short "one sentence Chinese, one sentence
+  English" recordings, every second sentence survived and none was translated.
+  All testing so far is one speaker in a quiet room — not a general benchmark;
+  other voices and noisy places are untested.
 - **No terminal punctuation.** Smart cleanup (the default) deliberately strips a
   sentence-ending period or question mark: a mark the model produced is a guess
   about your intent, and a wrong guess is worse than none. Punctuation inside the
   utterance is preserved.
 - **Unsigned builds, Apple Silicon only.** Release zips are not yet signed or
-  notarized, so first launch needs the **Open Anyway** flow. macOS 13+ on Apple
+  notarized, so first launch needs the **Open Anyway** flow. macOS 14+ on Apple
   Silicon; there is no Intel build.
-- **Single model, and VAD is off.** Friday ships only Medium — Large v3 and Turbo
-  were retired, and upgrading users are migrated automatically. Per-segment
-  voice-activity detection is implemented but disabled while its accuracy is
-  validated.
+- **Memory.** The model stays loaded while Friday runs: about 2.3 GB resident,
+  more while transcribing a long recording (0.4's Whisper used about 1 GB).
 - **Opinionated text cleanup.** Friday rewrites words that sound like AI tools
   ("cloud" -> "Claude", "codec" -> "Codex", and more) in **all** cleanup modes,
   with no off switch yet — which means some ordinary English words get replaced
-  too. It also strips Korean and Japanese character runs as hallucination
-  artifacts, so Friday is currently unsuitable for dictating those languages. A
+  too. It also strips Korean and Japanese character runs (a filter kept from the
+  Whisper era), so Friday is currently unsuitable for dictating those languages. A
   user-configurable vocabulary list is planned.
 
 [Read the full list](docs/LIMITATIONS.md) before filing an issue — several of
@@ -132,19 +133,16 @@ are downloaded directly from their source the first time they're needed.
 
 ## Development
 
-Building from source additionally needs whisper.cpp's `whisper-server` on your
-`PATH` (e.g. `/opt/homebrew/bin/whisper-server`). Install it with:
+Building from source works with the Command Line Tools alone (no Xcode). Build
+with `--build-system native`, which skips MLX's Metal sources, and fetch the
+matching prebuilt Metal shader library (Apple's official `mlx-metal` package on
+PyPI, pinned by checksum):
 
 ```bash
-bash scripts/setup-whisper.sh   # uses Homebrew (brew install whisper-cpp) if available
-```
-
-Then:
-
-```bash
-swift build          # build
-swift test           # run tests
-swift run FridayMac  # run
+swift build --build-system native              # build
+swift test --build-system native               # run tests
+bash scripts/fetch-mlx-metallib.sh --dev       # shader library next to the binaries
+.build/debug/FridayMac                         # run
 ```
 
 First launch from source needs the same three permissions and the same model
@@ -154,7 +152,7 @@ If the menu bar state ever looks stale, do a clean restart:
 
 ```bash
 pkill -f FridayMac || true
-swift build
+swift build --build-system native
 .build/debug/FridayMac &
 ```
 
@@ -217,7 +215,8 @@ opening it up, Friday went through several months of daily-use iteration: the
 menu bar app shell, hold-to-talk recording, paste-and-restore behavior,
 permission onboarding, secure-input checks, local model management, mixed
 Chinese/English cleanup, VAD experiments, and the move from a development-only
-whisper setup to a bundled `whisper-server` release package.
+whisper setup to a bundled `whisper-server` release package. In 0.5 the speech
+engine itself changed, from whisper.cpp to Qwen3-ASR running inside the app.
 
 That history is also why the README is intentionally specific about limitations.
 Friday already works well enough to be useful, but it is still early public

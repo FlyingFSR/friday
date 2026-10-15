@@ -4,89 +4,73 @@ import Testing
 
 struct ModelManagerSecurityTests {
   @Test
-  func checksumMismatchFailsInstallAndCleansDestinationFile() async throws {
-    let fileManager = FileManager.default
-    let root = fileManager.temporaryDirectory.appendingPathComponent("friday-model-test-\(UUID().uuidString)", isDirectory: true)
-    let modelsDirectory = root.appendingPathComponent("models", isDirectory: true)
-    try fileManager.createDirectory(at: modelsDirectory, withIntermediateDirectories: true)
-    defer {
-      try? fileManager.removeItem(at: root)
-    }
+  func checksumMismatchFailsInstallAndLeavesNoFileBehind() async throws {
+    let env = try SecurityTestEnvironment()
+    defer { env.tearDown() }
 
-    let downloadedFile = root.appendingPathComponent("downloaded-medium.bin")
-    try Data("tampered".utf8).write(to: downloadedFile)
-
-    let response = try #require(
-      HTTPURLResponse(
-        url: URL(string: "https://example.com/ggml-medium.bin")!,
-        statusCode: 200,
-        httpVersion: nil,
-        headerFields: nil
-      )
-    )
-
-    let session = MockModelDownloadSession(result: .success((downloadedFile, response)))
-    let descriptor = ModelDescriptor(
-      id: .medium,
-      displayName: "Medium",
-      approxSizeMB: 800,
-      quality: "accurate",
-      downloadURL: "https://example.com/ggml-medium.bin",
-      sha256: String(repeating: "0", count: 64)
-    )
-
-    let manager = ModelManager(
-      settingsStore: MockSettingsStoreForModelManager(),
-      modelsDirectory: modelsDirectory,
-      fileManager: fileManager,
-      modelCatalog: [.medium: descriptor],
-      downloadSession: session,
-      resourceRootURL: nil
+    let session = FileServingDownloadSession(root: env.root, files: ["weights.safetensors": Data("tampered".utf8)])
+    let manager = env.makeManager(
+      files: [ModelFile(name: "weights.safetensors", sizeBytes: 8, sha256: String(repeating: "0", count: 64))],
+      session: session
     )
 
     await #expect(throws: Error.self) {
-      try await manager.ensureModelInstalled(.medium)
+      try await manager.ensureModelInstalled(.qwen3ASR)
     }
 
-    let destinationPath = modelsDirectory.appendingPathComponent("ggml-medium.bin").path
-    #expect(!fileManager.fileExists(atPath: destinationPath))
+    let destination = env.modelsDirectory
+      .appendingPathComponent(ModelTier.qwen3ASR.rawValue)
+      .appendingPathComponent("weights.safetensors")
+    #expect(!FileManager.default.fileExists(atPath: destination.path))
+    #expect(await manager.isInstalled(.qwen3ASR) == false)
+  }
+
+  @Test
+  func downloadsEveryFileFromPinnedBaseAndVerifiesIt() async throws {
+    let env = try SecurityTestEnvironment()
+    defer { env.tearDown() }
+
+    let config = Data("{\"a\":1}".utf8)
+    let weights = Data("weights".utf8)
+    let session = FileServingDownloadSession(
+      root: env.root,
+      files: ["config.json": config, "weights.safetensors": weights]
+    )
+    let manager = env.makeManager(
+      files: [
+        ModelFile(name: "config.json", sizeBytes: Int64(config.count), sha256: sha256Hex(config)),
+        ModelFile(name: "weights.safetensors", sizeBytes: Int64(weights.count), sha256: sha256Hex(weights)),
+      ],
+      session: session
+    )
+
+    let directory = try await manager.ensureModelInstalled(.qwen3ASR)
+
+    #expect(try Data(contentsOf: directory.appendingPathComponent("config.json")) == config)
+    #expect(try Data(contentsOf: directory.appendingPathComponent("weights.safetensors")) == weights)
+    #expect(session.requested.map(\.absoluteString).sorted() == [
+      "https://example.com/pinned/config.json",
+      "https://example.com/pinned/weights.safetensors",
+    ])
   }
 
   @Test
   func invalidPinnedHashIsRejectedBeforeDownload() async throws {
-    let fileManager = FileManager.default
-    let root = fileManager.temporaryDirectory.appendingPathComponent("friday-model-test-\(UUID().uuidString)", isDirectory: true)
-    let modelsDirectory = root.appendingPathComponent("models", isDirectory: true)
-    try fileManager.createDirectory(at: modelsDirectory, withIntermediateDirectories: true)
-    defer {
-      try? fileManager.removeItem(at: root)
-    }
+    let env = try SecurityTestEnvironment()
+    defer { env.tearDown() }
 
-    let descriptor = ModelDescriptor(
-      id: .largeV3,
-      displayName: "Large v3",
-      approxSizeMB: 1600,
-      quality: "best",
-      downloadURL: "https://example.com/ggml-large-v3.bin",
-      sha256: "UNVERIFIED"
-    )
-
-    let manager = ModelManager(
-      settingsStore: MockSettingsStoreForModelManager(),
-      modelsDirectory: modelsDirectory,
-      fileManager: fileManager,
-      modelCatalog: [.largeV3: descriptor],
-      downloadSession: MockModelDownloadSession(result: .failure(FridayError.modelDownloadFailed("should not download"))),
-      resourceRootURL: nil
+    let manager = env.makeManager(
+      files: [ModelFile(name: "weights.safetensors", sizeBytes: 1, sha256: "UNVERIFIED")],
+      session: FileServingDownloadSession(root: env.root, files: [:])
     )
 
     do {
-      _ = try await manager.ensureModelInstalled(.largeV3)
+      _ = try await manager.ensureModelInstalled(.qwen3ASR)
       Issue.record("Expected model checksum validation error.")
     } catch let error as FridayError {
       switch error {
       case .modelChecksumUnavailable(let model):
-        #expect(model == descriptor.id.rawValue)
+        #expect(model == ModelTier.qwen3ASR.rawValue)
       default:
         Issue.record("Unexpected error: \(error.localizedDescription)")
       }
@@ -96,15 +80,57 @@ struct ModelManagerSecurityTests {
   }
 }
 
-private final class MockModelDownloadSession: ModelDownloadSession {
-  let result: Result<(URL, URLResponse), Error>
+private struct SecurityTestEnvironment {
+  let root: URL
+  let modelsDirectory: URL
 
-  init(result: Result<(URL, URLResponse), Error>) {
-    self.result = result
+  init() throws {
+    root = FileManager.default.temporaryDirectory
+      .appendingPathComponent("friday-model-test-\(UUID().uuidString)", isDirectory: true)
+    modelsDirectory = root.appendingPathComponent("models", isDirectory: true)
+    try FileManager.default.createDirectory(at: modelsDirectory, withIntermediateDirectories: true)
+  }
+
+  func makeManager(files: [ModelFile], session: any ModelDownloadSession) -> ModelManager {
+    ModelManager(
+      settingsStore: MockSettingsStoreForModelManager(),
+      modelsDirectory: modelsDirectory,
+      fileManager: .default,
+      modelCatalog: [.qwen3ASR: ModelDescriptor(
+        id: .qwen3ASR, displayName: "Qwen3-ASR 1.7B", approxSizeMB: 1, quality: "accurate",
+        baseURL: "https://example.com/pinned", files: files
+      )],
+      downloadSession: session,
+      resourceRootURL: nil
+    )
+  }
+
+  func tearDown() {
+    try? FileManager.default.removeItem(at: root)
+  }
+}
+
+/// Serves each requested file name from memory by writing it to a fresh temporary file, the way
+/// URLSession hands over a finished download.
+private final class FileServingDownloadSession: ModelDownloadSession, @unchecked Sendable {
+  let root: URL
+  let files: [String: Data]
+  private(set) var requested: [URL] = []
+
+  init(root: URL, files: [String: Data]) {
+    self.root = root
+    self.files = files
   }
 
   func download(from url: URL) async throws -> (URL, URLResponse) {
-    try result.get()
+    requested.append(url)
+    guard let data = files[url.lastPathComponent] else {
+      throw FridayError.modelDownloadFailed("not served: \(url.lastPathComponent)")
+    }
+    let temp = root.appendingPathComponent(UUID().uuidString)
+    try data.write(to: temp)
+    let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+    return (temp, response)
   }
 }
 

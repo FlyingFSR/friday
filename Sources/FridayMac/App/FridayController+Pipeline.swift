@@ -92,10 +92,7 @@ extension FridayController {
               model: model,
               language: self.settings.transcriptionLanguage
             )
-            transcription = try await self.transcribeRecoveringFromServerDeath(
-              request: request,
-              sessionID: sessionID
-            )
+            transcription = try await self.transcriptionService.transcribe(request: request)
             self.log("Transcription route model=\(model.rawValue)")
             cleanupPaths.append(contentsOf: transcription.artifactPaths)
             if !transcription.diagnostics.isEmpty {
@@ -289,49 +286,6 @@ extension FridayController {
     Self.preferredTranscriptionModel(
       defaultModel: settings.defaultModel,
       installedModels: settings.installedModels
-    ) ?? .medium
+    ) ?? .qwen3ASR
   }
-
-  /// Transcribe, recovering once if whisper-server has died mid-session.
-  ///
-  /// `isReady` is set when the server boots and is never re-checked, so a server
-  /// that crashed after startup still looks "ready" and the POST fails at the
-  /// socket. We treat only connection-level failures as recoverable: restart the
-  /// server once and retry a single time. Timeouts and HTTP errors are excluded
-  /// on purpose — the server is alive (just slow, or the request was rejected),
-  /// so restarting would kill a working process for nothing.
-  func transcribeRecoveringFromServerDeath(
-    request: TranscriptionRequest,
-    sessionID: UUID
-  ) async throws -> TranscriptionResult {
-    do {
-      return try await transcriptionService.transcribe(request: request)
-    } catch let error where Self.isRecoverableServerConnectionError(error) {
-      log("whisper-server unreachable (\(error.localizedDescription)); restarting once and retrying")
-      if isSessionActive(sessionID) {
-        statusMessage = "Restarting engine…"
-        hudController.show(
-          state: .transcribing,
-          message: statusMessage,
-          duration: nil,
-          showsCompletionCheck: false
-        )
-      }
-      try await whisperServer.restart()
-      return try await transcriptionService.transcribe(request: request)
-    }
-  }
-
-  nonisolated static func isRecoverableServerConnectionError(_ error: Error) -> Bool {
-    guard let urlError = error as? URLError else {
-      return false
-    }
-    switch urlError.code {
-    case .cannotConnectToHost, .networkConnectionLost:
-      return true
-    default:
-      return false
-    }
-  }
-
 }

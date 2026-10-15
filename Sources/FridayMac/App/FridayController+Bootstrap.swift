@@ -36,7 +36,7 @@ extension FridayController {
       refreshPermissions()
       startPermissionPolling(duration: 6)
       await refreshInstalledModelsFromDisk()
-      await startWhisperServerIfModelReady()
+      await loadSpeechEngineIfModelReady()
       onboardingWindowController = OnboardingWindowController(controller: self)
       startHotkeyIfPossible()
       updateOnboardingRequirement()
@@ -60,7 +60,6 @@ extension FridayController {
   }
 
   func shutdown() {
-    whisperServer.stop()
     permissionPollingTask?.cancel()
     permissionPollingTask = nil
     pendingIdleResetTask?.cancel()
@@ -111,19 +110,19 @@ extension FridayController {
     }
   }
 
-  /// Friday now ships a single transcription model (Medium). Earlier builds also
-  /// offered Large v3 and, later, Turbo (`large-v3-turbo`). Migrate any saved
-  /// default still pointing at a retired model over to Medium and delete the
-  /// obsolete weight files so upgrading users reclaim the disk space.
+  /// Friday 0.5 transcribes with Qwen3-ASR. Saved defaults that still name a Whisper model
+  /// (Medium, or the earlier Base/Small/Large v3/Turbo) move over to Qwen3-ASR. The retired
+  /// Large v3 and Turbo weight files are deleted as before; the Medium file is deliberately kept
+  /// so going back to Friday 0.4 does not require a 1.5 GB download.
   func migrateAwayFromRetiredModelsIfNeeded() async {
     let retiredModels: [ModelTier] = [.largeV3, .turbo]
 
-    if retiredModels.contains(settings.defaultModel) {
+    if settings.defaultModel != .qwen3ASR {
       let previous = settings.defaultModel
       settings = await settingsStore.update { settings in
-        settings.defaultModel = .medium
+        settings.defaultModel = .qwen3ASR
       }
-      log("Migrated default model \(previous.rawValue) -> medium")
+      log("Migrated default model \(previous.rawValue) -> \(ModelTier.qwen3ASR.rawValue)")
     }
 
     for tier in retiredModels {
@@ -134,32 +133,36 @@ extension FridayController {
   }
 
   func refreshInstalledModelsFromDisk() async {
-    let installed = await modelManager.installedModels().filter { $0 == .medium }
+    let installed = await modelManager.installedModels().filter { $0 == .qwen3ASR }
     let updated = await settingsStore.update { settings in
       settings.installedModels = installed
       settings.defaultModel = Self.preferredTranscriptionModel(
         defaultModel: settings.defaultModel,
         installedModels: installed
-      ) ?? .medium
+      ) ?? .qwen3ASR
     }
     settings = updated
   }
 
-  func startWhisperServerIfModelReady() async {
+  /// Loads the speech engine in the background so the first dictation is fast. Transcription
+  /// also loads it on demand, so a failure here only costs latency on that first dictation.
+  func loadSpeechEngineIfModelReady() async {
     guard let modelTier = Self.preferredTranscriptionModel(
       defaultModel: settings.defaultModel,
       installedModels: settings.installedModels
     ) else {
-      log("whisper-server not started: no installed transcription model")
+      log("Speech engine not loaded: no installed transcription model")
       return
     }
 
     do {
-      let modelURL = try await modelManager.ensureModelInstalled(modelTier)
-      try await whisperServer.start(modelPath: modelURL.path, vadModelPath: nil)
-      log("whisper-server started with model \(modelTier.rawValue) vad=off")
+      let startedAt = Date()
+      let modelDirectory = try await modelManager.ensureModelInstalled(modelTier)
+      try await speechEngine.load(modelDirectory: modelDirectory)
+      let ms = Int(Date().timeIntervalSince(startedAt) * 1000)
+      log("Speech engine loaded with model \(modelTier.rawValue) in \(ms) ms")
     } catch {
-      log("whisper-server failed to start: \(error.localizedDescription)")
+      log("Speech engine failed to load: \(error.localizedDescription)")
     }
   }
 
@@ -167,13 +170,7 @@ extension FridayController {
     defaultModel: ModelTier,
     installedModels: [ModelTier]
   ) -> ModelTier? {
-    if installedModels.contains(defaultModel), defaultModel == .medium {
-      return defaultModel
-    }
-    if installedModels.contains(.medium) {
-      return .medium
-    }
-    return nil
+    installedModels.contains(.qwen3ASR) ? .qwen3ASR : nil
   }
 
   func cleanupStaleArtifactsOnBootstrap() {

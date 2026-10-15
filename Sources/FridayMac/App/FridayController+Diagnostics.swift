@@ -1,12 +1,8 @@
 import Foundation
 
 extension FridayController {
-  func logRuntimeVersions(bundle: Bundle = .main) {
-    log(
-      RuntimeVersionInfo.diagnosticsSummary(
-        whisperCPPVersion: RuntimeVersionInfo.whisperCPPVersion(in: bundle)
-      )
-    )
+  func logRuntimeVersions() {
+    log(RuntimeVersionInfo.diagnosticsSummary)
   }
 
   func prepareDiagnosticsLogFileIfNeeded() {
@@ -61,8 +57,8 @@ extension FridayController {
       }
       settings = updated
       statusMessage = "Switching to \(tier.displayName)…"
-      log("Default model set to \(tier.rawValue), restarting whisper-server")
-      await startWhisperServerIfModelReady()
+      log("Default model set to \(tier.rawValue), loading speech engine")
+      await loadSpeechEngineIfModelReady()
       updateOnboardingRequirement()
     }
   }
@@ -75,7 +71,7 @@ extension FridayController {
       do {
         _ = try await modelManager.ensureModelInstalled(tier)
         await refreshInstalledModelsFromDisk()
-        await startWhisperServerIfModelReady()
+        await loadSpeechEngineIfModelReady()
         statusMessage = "\(tier.displayName) model ready"
         pipelineState = .pasted
         hudController.show(state: .pasted, message: statusMessage, duration: nil, showsCompletionCheck: true)

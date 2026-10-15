@@ -14,9 +14,7 @@ enum FridayError: Error, LocalizedError {
   case modelDownloadFailed(String)
   case secureInputEnabled
   case pasteFailed
-  case whisperServerNotFound
-  case whisperServerStartFailed
-  case whisperServerUnavailable
+  case speechEngineNotReady
 
   var errorDescription: String? {
     switch self {
@@ -46,12 +44,8 @@ enum FridayError: Error, LocalizedError {
       return "Secure input is active. Paste blocked."
     case .pasteFailed:
       return "Failed to paste transcription."
-    case .whisperServerNotFound:
-      return "whisper-server not found. Install whisper.cpp first."
-    case .whisperServerStartFailed:
-      return "whisper-server failed to start within timeout."
-    case .whisperServerUnavailable:
-      return "whisper-server is not running."
+    case .speechEngineNotReady:
+      return "The speech engine is not loaded yet."
     }
   }
 }

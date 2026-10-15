@@ -3,22 +3,29 @@ import Testing
 
 struct TranscriptionServiceArgumentTests {
   @Test
-  func mixedLanguagePromptIncludesPersonalVocabulary() {
-    #expect(TranscriptionService.mixedLanguagePrompt.contains("Fable"))
-    #expect(TranscriptionService.mixedLanguagePrompt.contains("relay"))
-    #expect(TranscriptionService.mixedLanguagePrompt.contains("Sol"))
+  func hotWordsIncludePersonalVocabulary() {
+    #expect(TranscriptionService.hotWords.contains("Fable"))
+    #expect(TranscriptionService.hotWords.contains("relay"))
+    #expect(TranscriptionService.hotWords.contains("Sol"))
   }
 
   @Test
-  func mixedLanguagePromptMatchesEvaluatedVariant() {
-    // Exact "P6" text from the 2026-08 language-detection eval; changing it invalidates that run.
+  func hotWordsMatchEvaluatedContext() {
+    // The exact context string scored in docs/qwen3-asr-eval-2026-10.md and the Swift port
+    // parity runs; changing it invalidates those results.
     #expect(
-      TranscriptionService.mixedLanguagePrompt ==
-        "Friday Codex Claude Fable relay Sol ChatGPT OpenAI Whisper whisper.cpp macOS Swift Git VAD React component " +
-        "system prompt pull request voice input flow。" +
-        "今天我用 Claude 写一个 React component，然后让 Codex review 这个 pull request。" +
-        "I use Claude every day。"
+      TranscriptionService.hotWords ==
+        "Friday Codex Claude Fable relay Sol ChatGPT OpenAI DeepSeek Qwen 通义千问 Haiku Whisper whisper.cpp " +
+        "macOS Swift Git VAD React component system prompt pull request voice input flow"
     )
+  }
+
+  @Test
+  func engineLanguageForcesChineseUnlessEnglishIsChosen() {
+    #expect(TranscriptionService.engineLanguage(for: "auto") == "Chinese")
+    #expect(TranscriptionService.engineLanguage(for: "") == "Chinese")
+    #expect(TranscriptionService.engineLanguage(for: "zh") == "Chinese")
+    #expect(TranscriptionService.engineLanguage(for: " EN ") == "English")
   }
 
   @Test

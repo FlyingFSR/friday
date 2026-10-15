@@ -7,20 +7,23 @@ deliberate states of the project.
 
 ## Mixed-language edge cases
 
-The whole recording is still decoded in a single pass with one auto-detected
-language. 0.4.0 fixed the two failure modes this caused — Chinese sentences
-inside English speech being dropped, and English passages being translated into
-Chinese — but a recovered Chinese insertion can still come back with character
-errors, and long Chinese narration can leave a few traditional characters in the
-output, since Friday has no simplified/traditional normalization layer. See the
-0.4.0 section of [CHANGELOG.md](../CHANGELOG.md) and
-[docs/language-detection-findings-2026-08.md](language-detection-findings-2026-08.md)
-for the measurements and the remaining costs.
+0.5.0 replaced whisper.cpp with Qwen3-ASR. Whisper detected one language for the
+whole recording, which is what made it drop the second sentence of a short
+Chinese-then-English recording; Qwen3-ASR is always told the main language
+(Chinese, unless you choose English) and still writes English sentences in
+English. On 50 short "one sentence Chinese, one sentence English" recordings,
+every second sentence survived and none was translated. Left to detect the
+language itself, Qwen3-ASR translated Chinese inside mixed dictation into
+English, which is why the language is never left on automatic.
 
-The 0.4.0 evaluation ran on 21 samples recorded by the maintainer, in one
-environment, with a single speaker. It measures a real change to a real failure
-mode; it is not a general benchmark, and your voice, accent, room, and mix of
-languages may not behave the way that set did.
+All of this was measured on recordings by the maintainer, in one quiet room, with
+a single speaker (91 recordings across the evaluations). It measures real changes
+to real failure modes; it is not a general benchmark, and your voice, accent,
+room, and mix of languages may not behave the way that set did.
+
+Friday gives the model a short list of names as hot words (Claude, Codex,
+Qwen…). Rarely, a similar-sounding word is written as one of them: in the 41
+evaluation recordings, "Cursor" became "Claude" once.
 
 ## No terminal punctuation
 
@@ -31,15 +34,8 @@ inside the utterance is preserved.
 
 If you dictate an explicit 句号 command and the model transcribes it as such, it
 is treated as an instruction and survives, without doubling a mark the model had
-already placed in front of it. But whisper does not reliably hear the command
+already placed in front of it. But the model does not reliably hear the command
 word itself, so this is not a dependable escape hatch — do not lean on it.
-
-## VAD is off by default
-
-Per-segment voice-activity detection is implemented end to end but disabled while
-its accuracy is validated, so the current path is a single-pass transcription of
-the whole recording. The Silero VAD model is only downloaded if VAD is enabled.
-[VAD_CHANGELOG.md](VAD_CHANGELOG.md) has the design history.
 
 ## Unsigned builds
 
@@ -51,15 +47,16 @@ developer account side that is not done.
 
 ## Apple Silicon only
 
-macOS 13 or later on Apple Silicon. There is no Intel build.
+macOS 14 or later on Apple Silicon (MLX requires it). There is no Intel build.
 
-## Single model: Medium
+## Single model, and memory
 
-Friday ships only the Medium model. Earlier builds also offered Large v3 and
-Turbo (`large-v3-turbo`); both were retired because Turbo could intermittently
-drop short mid-sentence segments, and Medium proved the most reliable in everyday
-use. Upgrading users are migrated to Medium automatically and the old weight
-files are deleted to reclaim disk space.
+Friday ships one model: Qwen3-ASR 1.7B, 8-bit, about 2.2 GB to download. It stays
+loaded while Friday runs, at about 2.3 GB of resident memory and more while a
+long recording is being transcribed; 0.4's whisper-server used about 1 GB.
+Earlier Whisper-based builds offered Medium, Large v3 and Turbo; none of them is
+used by 0.5. A Whisper Medium file left over from 0.4 is not deleted, so going
+back to 0.4 needs no download.
 
 ## Opinionated text cleanup
 
@@ -74,9 +71,9 @@ of the maintainer's own terms — which means the ordinary English words
 casing-only rewrite; `whisper.cpp` and `whisper-server` are left alone). If you
 dictate those words in their ordinary sense, they will be replaced.
 
-Friday also strips runs of Korean (Hangul) and Japanese kana from results as
-whisper hallucination artifacts, so it is currently unsuitable for dictating
-Japanese or Korean.
+Friday also strips runs of Korean (Hangul) and Japanese kana from results, a
+filter kept from the Whisper era when they were hallucination artifacts, so it
+is currently unsuitable for dictating Japanese or Korean.
 
 Both behaviors reflect the primary maintainer's daily Chinese/English workflow. A
 user-configurable vocabulary list is planned. If the aggressive rewrites start

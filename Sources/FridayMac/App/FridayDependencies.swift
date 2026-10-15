@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import Qwen3ASR
 
 protocol SettingsStoreControlling: AnyObject {
   func load() async -> FridaySettings
@@ -55,8 +56,8 @@ protocol AutoLaunchServicing: AnyObject {
 }
 
 protocol ModelManaging: AnyObject {
+  /// Returns the directory holding the verified model files, downloading them if needed.
   func ensureModelInstalled(_ tier: ModelTier) async throws -> URL
-  func ensureVADModelInstalled() async throws -> URL
   func installedModels() async -> [ModelTier]
   func removeModel(_ tier: ModelTier) async throws -> Bool
 }
@@ -65,14 +66,10 @@ protocol TranscriptionServicing: AnyObject {
   func transcribe(request: TranscriptionRequest) async throws -> TranscriptionResult
 }
 
-protocol WhisperServerManaging: AnyObject {
-  var isReady: Bool { get }
-  var baseURL: URL { get }
-  func start(modelPath: String, vadModelPath: String?) async throws
-  /// Relaunch the server using the most recent successful launch arguments.
-  /// Used to recover when the running server process has died mid-session.
-  func restart() async throws
-  func stop()
+protocol SpeechEngineControlling: Sendable {
+  var isLoaded: Bool { get async }
+  func load(modelDirectory: URL) async throws
+  func transcribe(samples: [Float], language: String, context: String) async throws -> TranscriptionOutput
 }
 
 @MainActor
@@ -99,15 +96,15 @@ struct FridayDependencies {
   let hudController: any HUDControlling
   let modelManager: any ModelManaging
   let transcriptionService: any TranscriptionServicing
-  let whisperServer: any WhisperServerManaging
+  let speechEngine: any SpeechEngineControlling
   let fileManager: FileManager
 
   @MainActor
   static func live() -> FridayDependencies {
     let settingsStore = SettingsStore()
     let modelManager = ModelManager(settingsStore: settingsStore)
-    let whisperServer = WhisperServerManager()
-    let transcriptionService = TranscriptionService(whisperServer: whisperServer, modelManager: modelManager)
+    let speechEngine = SpeechEngine()
+    let transcriptionService = TranscriptionService(speechEngine: speechEngine, modelManager: modelManager)
 
     return FridayDependencies(
       settingsStore: settingsStore,
@@ -121,7 +118,7 @@ struct FridayDependencies {
       hudController: HUDWindowController(),
       modelManager: modelManager,
       transcriptionService: transcriptionService,
-      whisperServer: whisperServer,
+      speechEngine: speechEngine,
       fileManager: .default
     )
   }
@@ -138,3 +135,4 @@ extension AutoLaunchService: AutoLaunchServicing {}
 extension ModelManager: ModelManaging {}
 extension TranscriptionService: TranscriptionServicing {}
 extension HUDWindowController: HUDControlling {}
+extension SpeechEngine: SpeechEngineControlling {}

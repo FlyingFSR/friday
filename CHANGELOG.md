@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.5.0 - 2026-10-15
+
+### Speech engine
+
+- **Transcription moves from whisper.cpp to Qwen3-ASR 1.7B (8-bit), running
+  inside the app on Apple's MLX.** On the maintainer's 41 evaluation recordings:
+  Chinese character errors 1.2% (Whisper Medium 2.0%), English word errors 1.3%
+  (2.2%), median latency about 0.6 s (1.6 s). The inference code was ported from
+  soniqo/speech-swift (Apache 2.0, see `Sources/Qwen3ASR/NOTICE.md`), reviewed
+  line by line, fixed where it diverged from Alibaba's official pipeline, and
+  checked to match a Python reference implementation transcript for transcript.
+- Short "one sentence Chinese, one sentence English" recordings no longer lose
+  their second sentence: on 50 such recordings, every second sentence survived
+  and none was translated.
+- The language is always set (Chinese unless English is chosen); hot words are
+  the same vocabulary the Whisper prompt used, without its example sentences.
+- whisper-server and its process management are gone, and so is the
+  voice-activity-detection (VAD) code, which was off by default.
+- The model is a directory of six files, each pinned by a SHA-256 computed from
+  our own conversion of Alibaba's official checkpoint.
+
+### Cleanup
+
+- More AI names get their canonical spelling in every cleanup mode: DeepSeek,
+  Kimi, Qwen / 通义千问 / 千问, Gemini, Anthropic, Grok, Llama, Mistral, MiniMax,
+  Midjourney, GLM and GPT-5, including common mis-hearings ("deep seek" ->
+  DeepSeek, 通一千万 -> 通义千问, GPT五 -> GPT-5). Opus, Sonnet, Haiku, Cursor,
+  Copilot and Perplexity, which are also ordinary English words, are capitalized
+  in smart mode only.
+
+### Compatibility
+
+- Requires macOS 14 (mlx-swift). Builds with `--build-system native` plus a
+  pinned prebuilt Metal shader library (`scripts/fetch-mlx-metallib.sh`); no Xcode
+  needed. Also builds again with the Command Line Tools alone on the macOS 27
+  SDK.
+- Settings live in a new `settings-2.json`, seeded once from 0.4's
+  `settings.json`, which 0.5 never rewrites; the Whisper Medium file is kept.
+  Going back to 0.4 therefore needs no download or repair.
+- Memory: about 2.3 GB resident (whisper-server used about 1 GB).
+- Release binaries no longer carry the build machine's file paths.
+
 ## 0.4.0 - 2026-08-29
 
 ### Transcription

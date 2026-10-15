@@ -124,11 +124,11 @@ struct OnboardingView: View {
         .font(.system(size: 12, weight: .medium))
         .foregroundStyle(.secondary)
 
-      Text("Friday transcribes with the Medium model — accurate on everyday Chinese/English dictation and light on memory.")
+      Text("Friday transcribes on-device with Qwen3-ASR 1.7B — accurate on mixed Chinese/English dictation. It needs about 2.3 GB of memory while Friday runs.")
         .font(.system(size: 12))
         .foregroundStyle(.secondary)
 
-      ForEach([ModelTier.medium]) { tier in
+      ForEach([ModelTier.qwen3ASR]) { tier in
         if let descriptor = controller.descriptor(for: tier) {
           modelCard(tier: tier, descriptor: descriptor)
         }

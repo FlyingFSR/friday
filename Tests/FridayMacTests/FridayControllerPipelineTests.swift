@@ -1,4 +1,5 @@
 import Foundation
+import Qwen3ASR
 import Testing
 @testable import FridayMac
 
@@ -97,27 +98,18 @@ struct FridayControllerPipelineTests {
   }
 
   @Test
-  func deadServerIsRestartedOnceAndTranscriptionRetried() async throws {
+  func engineErrorSurfacesWithoutRetry() async throws {
     let settingsStore = MockSettingsStore()
     let permissionService = MockPermissionService(allGranted: true)
     let hotkeyService = MockHotkeyService()
     let audioCaptureService = MockAudioCaptureService()
     let pasteService = MockPasteService()
     let transcriptionService = MockTranscriptionService()
-    let whisperServer = MockWhisperServerManager()
 
+    // The engine runs in-process: there is no server to restart, so a failure is
+    // reported once instead of being retried.
     transcriptionService.handler = { _ in
-      // First attempt: server is dead → connection refused. After restart the
-      // retry succeeds.
-      if transcriptionService.callCount == 1 {
-        throw URLError(.cannotConnectToHost)
-      }
-      return TranscriptionResult(
-        text: "recovered text",
-        detectedLanguage: .en,
-        durationMs: 10,
-        artifactPaths: []
-      )
+      throw FridayError.speechEngineNotReady
     }
 
     let controller = makeController(
@@ -126,50 +118,7 @@ struct FridayControllerPipelineTests {
       hotkeyService: hotkeyService,
       audioCaptureService: audioCaptureService,
       pasteService: pasteService,
-      transcriptionService: transcriptionService,
-      whisperServer: whisperServer
-    )
-
-    hotkeyService.triggerPress()
-    hotkeyService.triggerRelease()
-
-    for _ in 0..<40 {
-      if controller.pipelineState == .pasted {
-        break
-      }
-      try await Task.sleep(nanoseconds: 50_000_000)
-    }
-
-    #expect(controller.pipelineState == .pasted)
-    #expect(whisperServer.restartAttempts == 1)
-    #expect(transcriptionService.callCount == 2)
-    #expect(pasteService.pastedText == "recovered text")
-  }
-
-  @Test
-  func transcriptionTimeoutDoesNotRestartServer() async throws {
-    let settingsStore = MockSettingsStore()
-    let permissionService = MockPermissionService(allGranted: true)
-    let hotkeyService = MockHotkeyService()
-    let audioCaptureService = MockAudioCaptureService()
-    let pasteService = MockPasteService()
-    let transcriptionService = MockTranscriptionService()
-    let whisperServer = MockWhisperServerManager()
-
-    // A timeout means the server is alive but slow; restarting it would kill a
-    // working process, so the pipeline must not recover here.
-    transcriptionService.handler = { _ in
-      throw URLError(.timedOut)
-    }
-
-    let controller = makeController(
-      settingsStore: settingsStore,
-      permissionService: permissionService,
-      hotkeyService: hotkeyService,
-      audioCaptureService: audioCaptureService,
-      pasteService: pasteService,
-      transcriptionService: transcriptionService,
-      whisperServer: whisperServer
+      transcriptionService: transcriptionService
     )
 
     hotkeyService.triggerPress()
@@ -183,141 +132,66 @@ struct FridayControllerPipelineTests {
     }
 
     #expect(controller.pipelineState == .error)
-    #expect(whisperServer.restartAttempts == 0)
     #expect(transcriptionService.callCount == 1)
+    #expect(pasteService.pastedText == nil)
   }
 
   @Test
-  func failedServerRestartSurfacesErrorWithoutRetry() async throws {
-    let settingsStore = MockSettingsStore()
-    let permissionService = MockPermissionService(allGranted: true)
-    let hotkeyService = MockHotkeyService()
-    let audioCaptureService = MockAudioCaptureService()
-    let pasteService = MockPasteService()
-    let transcriptionService = MockTranscriptionService()
-    let whisperServer = MockWhisperServerManager()
-    whisperServer.restartError = FridayError.whisperServerStartFailed
-
-    transcriptionService.handler = { _ in
-      throw URLError(.cannotConnectToHost)
-    }
-
-    let controller = makeController(
-      settingsStore: settingsStore,
-      permissionService: permissionService,
-      hotkeyService: hotkeyService,
-      audioCaptureService: audioCaptureService,
-      pasteService: pasteService,
-      transcriptionService: transcriptionService,
-      whisperServer: whisperServer
-    )
-
-    hotkeyService.triggerPress()
-    hotkeyService.triggerRelease()
-
-    for _ in 0..<40 {
-      if controller.pipelineState == .error {
-        break
-      }
-      try await Task.sleep(nanoseconds: 50_000_000)
-    }
-
-    #expect(controller.pipelineState == .error)
-    #expect(whisperServer.restartAttempts == 1)
-    // Restart failed, so the transcription is not retried.
-    #expect(transcriptionService.callCount == 1)
-  }
-
-  @Test
-  func whisperServerStartupDoesNotEnableVADByDefault() async throws {
-    let settingsStore = MockSettingsStore()
-    let permissionService = MockPermissionService(allGranted: true)
-    let hotkeyService = MockHotkeyService()
-    let audioCaptureService = MockAudioCaptureService()
-    let pasteService = MockPasteService()
-    let transcriptionService = MockTranscriptionService()
-    let modelManager = MockModelManager()
-    let whisperServer = MockWhisperServerManager()
-
-    let controller = makeController(
-      settingsStore: settingsStore,
-      permissionService: permissionService,
-      hotkeyService: hotkeyService,
-      audioCaptureService: audioCaptureService,
-      pasteService: pasteService,
-      transcriptionService: transcriptionService,
-      modelManager: modelManager,
-      whisperServer: whisperServer
-    )
-
-    await controller.startWhisperServerIfModelReady()
-
-    #expect(modelManager.vadInstallAttempts == 0)
-    #expect(whisperServer.lastVADModelPath == nil)
-  }
-
-  @Test
-  func whisperServerStartupSkipsWhenDefaultModelIsMissing() async throws {
+  func speechEngineLoadSkipsWhenModelIsMissing() async throws {
     let settingsStore = MockSettingsStore()
     settingsStore.current.installedModels = []
-    let permissionService = MockPermissionService(allGranted: true)
-    let hotkeyService = MockHotkeyService()
-    let audioCaptureService = MockAudioCaptureService()
-    let pasteService = MockPasteService()
-    let transcriptionService = MockTranscriptionService()
     let modelManager = MockModelManager()
     modelManager.installed = []
-    let whisperServer = MockWhisperServerManager()
+    let speechEngine = MockSpeechEngine()
 
     let controller = makeController(
       settingsStore: settingsStore,
-      permissionService: permissionService,
-      hotkeyService: hotkeyService,
-      audioCaptureService: audioCaptureService,
-      pasteService: pasteService,
-      transcriptionService: transcriptionService,
+      permissionService: MockPermissionService(allGranted: true),
+      hotkeyService: MockHotkeyService(),
+      audioCaptureService: MockAudioCaptureService(),
+      pasteService: MockPasteService(),
+      transcriptionService: MockTranscriptionService(),
       modelManager: modelManager,
-      whisperServer: whisperServer
+      speechEngine: speechEngine
     )
     controller.settings = settingsStore.current
 
-    await controller.startWhisperServerIfModelReady()
+    await controller.loadSpeechEngineIfModelReady()
 
     #expect(modelManager.ensureAttempts == 0)
-    #expect(whisperServer.startAttempts == 0)
+    #expect(speechEngine.loadedDirectories.isEmpty)
   }
 
   @Test
-  func installModelStartsWhisperServerAfterModelBecomesReady() async throws {
+  func installModelLoadsSpeechEngineAfterModelBecomesReady() async throws {
     let settingsStore = MockSettingsStore()
     settingsStore.current.installedModels = []
-    let permissionService = MockPermissionService(allGranted: true)
-    let hotkeyService = MockHotkeyService()
-    let audioCaptureService = MockAudioCaptureService()
-    let pasteService = MockPasteService()
-    let transcriptionService = MockTranscriptionService()
     let modelManager = MockModelManager()
     modelManager.installed = []
-    let whisperServer = MockWhisperServerManager()
+    let speechEngine = MockSpeechEngine()
 
     let controller = makeController(
       settingsStore: settingsStore,
-      permissionService: permissionService,
-      hotkeyService: hotkeyService,
-      audioCaptureService: audioCaptureService,
-      pasteService: pasteService,
-      transcriptionService: transcriptionService,
+      permissionService: MockPermissionService(allGranted: true),
+      hotkeyService: MockHotkeyService(),
+      audioCaptureService: MockAudioCaptureService(),
+      pasteService: MockPasteService(),
+      transcriptionService: MockTranscriptionService(),
       modelManager: modelManager,
-      whisperServer: whisperServer
+      speechEngine: speechEngine
     )
     controller.settings = settingsStore.current
 
-    controller.installModel(.medium)
-    try await Task.sleep(nanoseconds: 250_000_000)
+    controller.installModel(.qwen3ASR)
+    for _ in 0..<40 {
+      if !speechEngine.loadedDirectories.isEmpty {
+        break
+      }
+      try await Task.sleep(nanoseconds: 25_000_000)
+    }
 
     #expect(modelManager.ensureAttempts == 2)
-    #expect(whisperServer.startAttempts == 1)
-    #expect(whisperServer.lastModelPath == "/tmp/mock-model.bin")
+    #expect(speechEngine.loadedDirectories == [URL(fileURLWithPath: "/tmp/mock-model")])
   }
 
   @Test
@@ -355,7 +229,7 @@ struct FridayControllerPipelineTests {
     pasteService: MockPasteService,
     transcriptionService: MockTranscriptionService,
     modelManager: MockModelManager = MockModelManager(),
-    whisperServer: MockWhisperServerManager = MockWhisperServerManager()
+    speechEngine: MockSpeechEngine = MockSpeechEngine()
   ) -> FridayController {
     FridayController(
       dependencies: FridayDependencies(
@@ -370,7 +244,7 @@ struct FridayControllerPipelineTests {
         hudController: MockHUDController(),
         modelManager: modelManager,
         transcriptionService: transcriptionService,
-        whisperServer: whisperServer,
+        speechEngine: speechEngine,
         fileManager: .default
       )
     )
@@ -506,21 +380,15 @@ private final class MockAutoLaunchService: AutoLaunchServicing {
 }
 
 private final class MockModelManager: ModelManaging {
-  var vadInstallAttempts = 0
   var ensureAttempts = 0
-  var installed: [ModelTier] = [.medium]
+  var installed: [ModelTier] = [.qwen3ASR]
 
   func ensureModelInstalled(_ tier: ModelTier) async throws -> URL {
     ensureAttempts += 1
     if !installed.contains(tier) {
       installed.append(tier)
     }
-    return URL(fileURLWithPath: "/tmp/mock-model.bin")
-  }
-
-  func ensureVADModelInstalled() async throws -> URL {
-    vadInstallAttempts += 1
-    return URL(fileURLWithPath: "/tmp/mock-vad-model.bin")
+    return URL(fileURLWithPath: "/tmp/mock-model")
   }
 
   func installedModels() async -> [ModelTier] {
@@ -545,29 +413,20 @@ private final class MockTranscriptionService: TranscriptionServicing {
   }
 }
 
-private final class MockWhisperServerManager: WhisperServerManaging {
-  var isReady = true
-  var baseURL: URL { URL(string: "http://127.0.0.1:8178")! }
-  var lastVADModelPath: String?
-  var lastModelPath: String?
-  var startAttempts = 0
-  var restartAttempts = 0
-  var restartError: Error?
+private final class MockSpeechEngine: SpeechEngineControlling, @unchecked Sendable {
+  private(set) var loadedDirectories: [URL] = []
 
-  func start(modelPath: String, vadModelPath: String?) async throws {
-    startAttempts += 1
-    lastModelPath = modelPath
-    lastVADModelPath = vadModelPath
+  var isLoaded: Bool {
+    get async { !loadedDirectories.isEmpty }
   }
 
-  func restart() async throws {
-    restartAttempts += 1
-    if let restartError {
-      throw restartError
-    }
+  func load(modelDirectory: URL) async throws {
+    loadedDirectories.append(modelDirectory)
   }
 
-  func stop() {}
+  func transcribe(samples: [Float], language: String, context: String) async throws -> TranscriptionOutput {
+    TranscriptionOutput(text: "", language: language, finishReasons: ["eos"])
+  }
 }
 
 @MainActor

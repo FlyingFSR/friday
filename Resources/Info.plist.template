@@ -23,7 +23,7 @@
   <key>CFBundleVersion</key>
   <string>__BUNDLE_VERSION__</string>
   <key>LSMinimumSystemVersion</key>
-  <string>13.0</string>
+  <string>14.0</string>
   <key>NSMicrophoneUsageDescription</key>
   <string>Friday needs microphone access so you can hold Right Command and speak to input text.</string>
   <key>NSPrincipalClass</key>

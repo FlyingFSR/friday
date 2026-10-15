@@ -8,12 +8,12 @@ on:
 jobs:
   build-and-test:
     # macos-15 ships Xcode 16+, required for the Swift Testing framework
-    # used by the test suite. Tests are fully mocked — no whisper-server
-    # binary or model download is needed.
+    # used by the test suite. Tests need no model download and do not run
+    # MLX on the GPU, so the Metal shader library is not fetched here.
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v5
       - name: Build
-        run: swift build
+        run: swift build --build-system native
       - name: Test
-        run: swift test
+        run: swift test --build-system native
