@@ -7,10 +7,10 @@ on:
 
 jobs:
   build-and-test:
-    # macos-15 ships Xcode 16+, required for the Swift Testing framework
-    # used by the test suite. Tests need no model download and do not run
-    # MLX on the GPU, so the Metal shader library is not fetched here.
-    runs-on: macos-15
+    # mlx-swift 0.32.3 needs Swift tools 6.3, which macos-15 (Swift 6.1) lacks;
+    # macos-26 defaults to Xcode 26.6. Tests need no model download and do not
+    # run MLX on the GPU, so the Metal shader library is not fetched here.
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v5
       - name: Build
