@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Friday · 中英混说的本地 Mac 语音输入</title>
+<meta name="description" content="Friday：在你的 Mac 上本地运行的语音输入，一句话里中英来回切也不丢词、不翻译。免费，MIT 开源。On-device Mac dictation for Chinese-English code-switching.">
+<meta name="color-scheme" content="light dark">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Friday · On-device Mac dictation for Chinese + English">
+<meta property="og:description" content="Hold a key, speak Chinese and English in one breath, release. Runs fully on your Mac. Free, MIT licensed.">
+<meta property="og:image" content="https://friday.quietseaai.win/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232f6df6'/%3E%3Cg fill='%23fff'%3E%3Crect x='13' y='26' width='5' height='12' rx='2.5'/%3E%3Crect x='22' y='18' width='5' height='28' rx='2.5'/%3E%3Crect x='31' y='12' width='5' height='40' rx='2.5'/%3E%3Crect x='40' y='20' width='5' height='24' rx='2.5'/%3E%3Crect x='49' y='27' width='5' height='10' rx='2.5'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+<script>
+(function(){var s=null;try{s=localStorage.getItem('friday-lang')}catch(e){}
+var l=s||((navigator.language||'').toLowerCase().indexOf('zh')===0?'zh':'en');
+document.documentElement.setAttribute('data-lang',l);document.documentElement.lang=l==='zh'?'zh-CN':'en';})();
+</script>
+</head>
+<body>
+<a class="skip" href="#main"><span lang="zh">跳到正文</span><span lang="en">Skip to content</span></a>
+<header class="top">
+  <div class="wrap bar">
+    <a class="brand" href="#top" aria-label="Friday">
+      <svg width="28" height="28" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#2f6df6"/><g fill="#fff"><rect x="13" y="26" width="5" height="12" rx="2.5"/><rect x="22" y="18" width="5" height="28" rx="2.5"/><rect x="31" y="12" width="5" height="40" rx="2.5"/><rect x="40" y="20" width="5" height="24" rx="2.5"/><rect x="49" y="27" width="5" height="10" rx="2.5"/></g></svg>
+      Friday
+    </a>
+    <nav aria-label="Main / 主导航">
+      <a href="#why"><span lang="zh">区别</span><span lang="en">Why</span></a>
+      <a href="#install"><span lang="zh">安装</span><span lang="en">Install</span></a>
+      <a href="#compare"><span lang="zh">对比</span><span lang="en">Compare</span></a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <button id="lang" class="lang" type="button" aria-label="切换语言 / Switch language"><span lang="zh">English</span><span lang="en">中文</span></button>
+  </div>
+</header>
+
+<main id="main">
+<section class="hero" id="top">
+  <div class="wrap">
+    <p class="eyebrow"><span lang="zh">开源 · 免费 · 只在你的 Mac 上跑</span><span lang="en">Open source · Free · Runs only on your Mac</span></p>
+    <h1><span lang="zh">一句话里中英来回切，<br>也不丢词、不乱翻译。</span><span lang="en">Dictation for people who switch between Chinese and English mid&#8209;sentence.</span></h1>
+    <p class="lead"><span lang="zh">按住一个键说话，松手，文字直接出现在光标处。不上云，不要账号，没有统计。</span><span lang="en">Hold a key, speak, release. The text lands at your cursor. No cloud, no account, no telemetry.</span></p>
+    <figure class="sample">
+      <figcaption><span lang="zh">项目测试集里的一句：</span><span lang="en">A sentence from the project's test set:</span></figcaption>
+      <blockquote lang="zh-CN">我让 <mark>Codex review</mark> 一下这个 <mark>pull request</mark>，然后部署到 <mark>production</mark></blockquote>
+      <p class="note"><span lang="zh">英文还是英文，中文还是中文，不丢词，不翻译。</span><span lang="en">English stays English, Chinese stays Chinese. Nothing dropped, nothing translated.</span></p>
+    </figure>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/FlyingFSR/friday/releases/latest"><span lang="zh">下载最新版</span><span lang="en">Download latest release</span></a>
+      <a class="btn" href="https://github.com/FlyingFSR/friday"><span lang="zh">在 GitHub 查看源码</span><span lang="en">View source on GitHub</span></a>
+    </div>
+    <p class="small"><span lang="zh">需要 Apple 芯片 Mac、macOS 14+。目前是未签名预览版，第一次打开要多点一步，<a href="#install">看安装</a>。</span><span lang="en">Requires an Apple Silicon Mac on macOS 14+. Builds are unsigned previews, so first launch needs one extra step. <a href="#install">See Install</a>.</span></p>
+  </div>
+</section>
+
+<section id="why" aria-labelledby="why-h">
+  <div class="wrap">
+    <h2 id="why-h"><span lang="zh">和别的语音输入有什么不一样</span><span lang="en">What's different</span></h2>
+    <p class="intro"><span lang="zh">本地中英混说的工具不止 Friday 一个（比如 TypeAloud 也做）。下面是 Friday 自己的做法，哪些别人也有，我们直接写出来。</span><span lang="en">Friday isn't the only on-device tool for mixed Chinese and English (TypeAloud does it too). Here's how Friday approaches it, and where others offer the same thing.</span></p>
+    <div class="cards">
+      <article class="card">
+        <h3><span lang="zh">语言总是指定，混说结果公开</span><span lang="en">Language is always set, and the mixed-speech results are public</span></h3>
+        <p><span lang="zh">Friday 不让模型自己猜语言：让 Qwen3-ASR 自动判断时，它会把混说里的中文翻成英文。指定中文后，英文句子依然写成英文。在 50 条“一句中文接一句英文”的短录音里，第二句全部保留，没有一句被翻译。</span><span lang="en">Friday never leaves the language on auto-detect: when Qwen3-ASR guessed the language itself, it translated Chinese inside mixed dictation into English. Set to Chinese, it still writes English sentences in English. On 50 short "one sentence Chinese, one sentence English" recordings, every second sentence survived and none was translated.</span></p>
+        <p class="fine"><span lang="zh">只是一个人、一个安静房间里的结果，不是通用评测。</span><span lang="en">One speaker, one quiet room. Not a general benchmark.</span></p>
+      </article>
+      <article class="card">
+        <h3><span lang="zh">松手到出字约 0.6 秒</span><span lang="en">About 0.6 s from release to text</span></h3>
+        <p><span lang="zh">在作者的 41 条测试录音上，换成 Qwen3-ASR 的 0.5.0 中位延迟约 0.6 秒（0.4.0 的 Whisper Medium 约 1.6 秒）；中文错字率 1.2%，英文错词率 1.3%。不靠网络，不受网速影响。</span><span lang="en">On the maintainer's 41 evaluation recordings, 0.5.0 (Qwen3-ASR) has a median latency of about 0.6 s (vs ~1.6 s for Whisper Medium in 0.4.0), with 1.2% Chinese character error rate and 1.3% English word error rate. No network involved.</span></p>
+        <p class="fine"><span lang="zh">同样只代表作者一个人的声音。</span><span lang="en">Again, from one speaker.</span></p>
+      </article>
+      <article class="card">
+        <h3><span lang="zh">完全本地，模型逐个文件校验</span><span lang="en">Fully on-device, model files verified</span></h3>
+        <p><span lang="zh">录音只在你的 Mac 上转写，不上传、不远程记录。模型从固定版本下载，每个文件都做 SHA-256 校验，对不上就拒绝。</span><span lang="en">Audio is transcribed on your Mac and never uploaded or logged remotely. The model comes from a pinned revision and every file is checked against a SHA-256; anything that doesn't match is rejected.</span></p>
+        <p class="fine"><span lang="zh">不是独有：Handy、VoiceInk、TypeAloud 也在本地识别。</span><span lang="en">Not unique: Handy, VoiceInk, and TypeAloud also transcribe locally.</span></p>
+      </article>
+      <article class="card">
+        <h3><span lang="zh">免费，MIT 开源</span><span lang="en">Free and MIT licensed</span></h3>
+        <p><span lang="zh">不用订阅，不要账号。代码在 GitHub，随便看、随便改。</span><span lang="en">No subscription, no account. The code is on GitHub to read and change.</span></p>
+        <p class="fine"><span lang="zh">不是独有：Handy（MIT）、TypeAloud（GPL-3.0）也免费开源。</span><span lang="en">Not unique: Handy (MIT) and TypeAloud (GPL-3.0) are free and open source too.</span></p>
+      </article>
+      <article class="card">
+        <h3><span lang="zh">缺点写在明处</span><span lang="en">Limitations stated up front</span></h3>
+        <p><span lang="zh">没测过别人的声音、句末不加标点、会改写像 AI 工具名的词，全都写在下面和仓库的 LIMITATIONS 里。</span><span lang="en">Untested on other voices, no sentence-final punctuation, opinionated rewrites of AI tool names: all listed below and in the repo's LIMITATIONS.</span></p>
+      </article>
+      <article class="card">
+        <h3><span lang="zh">日常用得顺手</span><span lang="en">Small things done right</span></h3>
+        <ul>
+          <li><span lang="zh">快捷键可选右 Command（默认）、左 Command、左右 Option、右 Control</span><span lang="en">Push-to-talk on Right Command (default), Left Command, Left or Right Option, or Right Control</span></li>
+          <li><span lang="zh">文字插入光标处，之后还原原来的剪贴板</span><span lang="en">Pastes at your cursor and restores your clipboard</span></li>
+          <li><span lang="zh">遇到密码框等受保护输入，拒绝粘贴</span><span lang="en">Refuses to paste into password fields</span></li>
+          <li><span lang="zh">首次引导：开权限、下模型</span><span lang="en">First-run onboarding for permissions and the model</span></li>
+        </ul>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="install" aria-labelledby="install-h">
+  <div class="wrap two">
+    <div>
+      <h2 id="install-h"><span lang="zh">安装</span><span lang="en">Install</span></h2>
+      <h3><span lang="zh">运行要求</span><span lang="en">Requirements</span></h3>
+      <ul>
+        <li><span lang="zh">Apple 芯片的 Mac，macOS 14 或更新</span><span lang="en">Apple Silicon Mac, macOS 14+</span></li>
+        <li><span lang="zh">运行时约占 2.3 GB 内存</span><span lang="en">About 2.3 GB of free memory while Friday runs</span></li>
+        <li><span lang="zh">第一次设置时会下载约 2.2 GB 的识别模型</span><span lang="en">About 2.2 GB for the speech model, downloaded during first-run setup</span></li>
+      </ul>
+      <h3><span lang="zh">步骤</span><span lang="en">Steps</span></h3>
+      <ol class="steps">
+        <li><span lang="zh">从 <a href="https://github.com/FlyingFSR/friday/releases/latest">Releases</a> 下载最新的 zip，把 <code>Friday.app</code> 拖进“应用程序”。</span><span lang="en">Download the latest zip from <a href="https://github.com/FlyingFSR/friday/releases/latest">Releases</a> and move <code>Friday.app</code> to Applications.</span></li>
+        <li><span lang="zh">现在的安装包还没签名，第一次打开会提示“Apple 无法验证 Friday”，只给“完成”和“移到废纸篓”两个按钮。点 <strong>完成</strong>。</span><span lang="en">Builds are not signed yet, so the first launch says "Apple could not verify Friday" and only offers <strong>Done</strong> or <strong>Move to Trash</strong>. Click <strong>Done</strong>.</span></li>
+        <li><span lang="zh">打开 <strong>系统设置</strong> → <strong>隐私与安全性</strong>。</span><span lang="en">Open <strong>System Settings</strong> → <strong>Privacy &amp; Security</strong>.</span></li>
+        <li><span lang="zh">在 <strong>安全性</strong> 里，点 Friday 旁边的 <strong>仍要打开</strong>。</span><span lang="en">Under <strong>Security</strong>, click <strong>Open Anyway</strong> for Friday.</span></li>
+        <li><span lang="zh">再点一次 <strong>仍要打开</strong>，输入电脑密码。</span><span lang="en">Confirm <strong>Open Anyway</strong> again and enter your administrator password.</span></li>
+      </ol>
+      <p><span lang="zh">然后按提示给三个权限，这是 macOS 对语音输入工具的要求：</span><span lang="en">Then grant the three permissions macOS requires for a voice-input tool:</span></p>
+      <ol class="perm">
+        <li><span lang="zh"><strong>麦克风</strong>：听你说话</span><span lang="en"><strong>Microphone</strong> to hear you</span></li>
+        <li><span lang="zh"><strong>辅助功能</strong>：把字贴进别的 App</span><span lang="en"><strong>Accessibility</strong> to paste into other apps</span></li>
+        <li><span lang="zh"><strong>输入监控</strong>：识别你按下的快捷键</span><span lang="en"><strong>Input Monitoring</strong> to detect the push-to-talk key</span></li>
+      </ol>
+      <p><span lang="zh">最后下载 <strong>Qwen3-ASR 1.7B</strong> 模型，选好快捷键，按住说话，松手，就可以了。</span><span lang="en">Install the <strong>Qwen3-ASR 1.7B</strong> model, pick a key, hold it, speak, release.</span></p>
+    </div>
+    <aside class="limits" aria-labelledby="lim-h">
+      <h3 id="lim-h"><span lang="zh">已知问题</span><span lang="en">Known limitations</span></h3>
+      <ul>
+        <li><span lang="zh"><strong>只测过作者一个人</strong>：别人的声音和嘈杂环境还没测。</span><span lang="en"><strong>Tested on one voice.</strong> Other speakers and noisy rooms are untested.</span></li>
+        <li><span lang="zh"><strong>句末不加标点</strong>：默认会去掉最后的句号或问号，句子中间的标点会保留。</span><span lang="en"><strong>No sentence-final punctuation.</strong> Smart cleanup (the default) strips a trailing period or question mark. Punctuation inside the sentence is kept.</span></li>
+        <li><span lang="zh"><strong>未签名，只支持 Apple 芯片</strong>：第一次打开要走“仍要打开”；没有 Intel 版本。</span><span lang="en"><strong>Unsigned, Apple Silicon only.</strong> First launch needs Open Anyway. No Intel build.</span></li>
+        <li><span lang="zh"><strong>内存</strong>：模型常驻约 2.3 GB。</span><span lang="en"><strong>Memory.</strong> The model stays loaded at about 2.3 GB.</span></li>
+        <li><span lang="zh"><strong>会改写一些词</strong>：像 AI 工具名的词会被改掉（cloud → Claude，codec → Codex），目前所有模式都这样，还不能关。日文假名和韩文会被过滤，暂时不适合日语、韩语。可自定义的词表在计划中。</span><span lang="en"><strong>Opinionated rewrites.</strong> Words that sound like AI tools get rewritten in every cleanup mode ("cloud" → "Claude", "codec" → "Codex"), with no off switch yet. Japanese kana and Korean are filtered out. A user vocabulary list is planned.</span></li>
+      </ul>
+      <p class="fine"><span lang="zh">完整说明见 <a href="https://github.com/FlyingFSR/friday/blob/main/docs/LIMITATIONS.md">docs/LIMITATIONS.md</a>。</span><span lang="en">Full reasoning in <a href="https://github.com/FlyingFSR/friday/blob/main/docs/LIMITATIONS.md">docs/LIMITATIONS.md</a>.</span></p>
+    </aside>
+  </div>
+</section>
+
+<section id="compare" aria-labelledby="cmp-h">
+  <div class="wrap">
+    <h2 id="cmp-h"><span lang="zh">和类似工具对比</span><span lang="en">How it compares</span></h2>
+    <p class="intro"><span lang="zh">只写我们核实过的；没核实的标“未确认”。各项目可能已更新，以它们自己的页面为准。</span><span lang="en">Only facts we checked; anything unchecked is marked "unverified". Projects change, so their own pages are the source of truth.</span></p>
+    <div class="table-scroll" tabindex="0" role="region" aria-labelledby="cmp-h">
+    <table>
+      <thead><tr>
+        <th scope="col"><span lang="zh">工具</span><span lang="en">Tool</span></th>
+        <th scope="col"><span lang="zh">识别在哪跑</span><span lang="en">Recognition</span></th>
+        <th scope="col"><span lang="zh">中英混说</span><span lang="en">Mixed zh/en</span></th>
+        <th scope="col"><span lang="zh">许可证</span><span lang="en">License</span></th>
+        <th scope="col"><span lang="zh">价格</span><span lang="en">Price</span></th>
+        <th scope="col"><span lang="zh">平台</span><span lang="en">Platforms</span></th>
+      </tr></thead>
+      <tbody>
+        <tr class="me"><th scope="row">Friday</th><td><span lang="zh">本机</span><span lang="en">On device</span></td><td><span lang="zh">主打；语言总是指定，公开 50 条测试</span><span lang="en">Core focus; language always set, 50-clip test published</span></td><td>MIT</td><td><span lang="zh">免费</span><span lang="en">Free</span></td><td><span lang="zh">Apple 芯片 Mac</span><span lang="en">Apple Silicon Mac</span></td></tr>
+        <tr><th scope="row">TypeAloud</th><td><span lang="zh">本机（Qwen3-ASR）</span><span lang="en">On device (Qwen3-ASR)</span></td><td><span lang="zh">主打；模型从音频自动判断语言；有词典和自动替换</span><span lang="en">Core focus; model detects language from audio; has dictionary and auto-replacements</span></td><td>GPL-3.0</td><td><span lang="zh">免费（可选云端转写用你自己的 Groq / OpenAI key，费用由服务商收）</span><span lang="en">Free (optional cloud transcription with your own Groq / OpenAI key; provider charges apply)</span></td><td><span lang="zh">Mac（主力）；Windows、Linux 实验版</span><span lang="en">Mac (primary); Windows, Linux experimental</span></td></tr>
+        <tr><th scope="row">Handy</th><td><span lang="zh">本机</span><span lang="en">On device</span></td><td><span lang="zh">没有专门调过</span><span lang="en">Not specifically tuned</span></td><td>MIT</td><td><span lang="zh">免费</span><span lang="en">Free</span></td><td>Mac / Windows / Linux</td></tr>
+        <tr><th scope="row">VoiceInk</th><td><span lang="zh">本机</span><span lang="en">On device</span></td><td><span lang="zh">没有专门调过</span><span lang="en">Not specifically tuned</span></td><td>GPL-3.0</td><td><span lang="zh">源码免费，官方构建版付费</span><span lang="en">Source free; official builds paid</span></td><td>Mac</td></tr>
+        <tr><th scope="row">CapsWriter-Offline</th><td><span lang="zh">本机（也用 Qwen3-ASR）</span><span lang="en">On device (also Qwen3-ASR)</span></td><td class="unk"><span lang="zh">未确认</span><span lang="en">Unverified</span></td><td>MIT</td><td><span lang="zh">免费</span><span lang="en">Free</span></td><td>Windows</td></tr>
+        <tr><th scope="row">Wispr Flow</th><td><span lang="zh">云端</span><span lang="en">Cloud</span></td><td class="unk"><span lang="zh">未确认</span><span lang="en">Unverified</span></td><td><span lang="zh">闭源</span><span lang="en">Proprietary</span></td><td><span lang="zh">免费版（桌面每周 2,000 词）；Pro $15/月或 $144/年</span><span lang="en">Free tier (2,000 words/week on desktop); Pro $15/mo or $144/yr</span></td><td>Mac / Windows / iOS / Android</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="fine"><span lang="zh">如果你主要说英文，或者需要 Windows、Linux，Handy 更合适。需要自定义词表的话，TypeAloud 现在就有，Friday 还没有。</span><span lang="en">If you mostly dictate English or need Windows or Linux, Handy is a better fit. If you need a custom vocabulary today, TypeAloud has one and Friday doesn't yet.</span></p>
+  </div>
+</section>
+
+<section id="faq" aria-labelledby="faq-h">
+  <div class="wrap narrow">
+    <h2 id="faq-h"><span lang="zh">常见问题</span><span lang="en">FAQ</span></h2>
+    <details><summary><span lang="zh">我的录音会上传吗？</span><span lang="en">Is my audio uploaded?</span></summary>
+      <p><span lang="zh">不会。录音只在你的 Mac 上转写，从不上传、不远程记录、不发给第三方。没有账号，没有统计。只有第一次下载模型文件时会联网，直接从源头下载。</span><span lang="en">No. Audio is transcribed on your Mac and never uploaded, logged remotely, or sent to third parties. No account, no telemetry. The only network use is downloading the model files the first time, straight from their source.</span></p></details>
+    <details><summary><span lang="zh">能断网用吗？</span><span lang="en">Does it work offline?</span></summary>
+      <p><span lang="zh">可以。模型下载好之后，识别全部在本机完成，不需要网络。</span><span lang="en">Yes. Once the model is downloaded, recognition runs entirely on your Mac with no network needed.</span></p></details>
+    <details><summary><span lang="zh">准不准？</span><span lang="en">How accurate is it?</span></summary>
+      <p><span lang="zh">在作者自己的 41 条录音上，中文错字率 1.2%，英文错词率 1.3%。这只是一个人、一个安静房间的结果，你的口音和环境可能不一样。欢迎把你的结果发到 <a href="https://github.com/FlyingFSR/friday/issues">Issues</a>。</span><span lang="en">On the maintainer's 41 recordings: 1.2% Chinese character error rate, 1.3% English word error rate. That's one speaker in one quiet room; your accent and room may differ. Results posted to <a href="https://github.com/FlyingFSR/friday/issues">Issues</a> are welcome.</span></p></details>
+    <details><summary><span lang="zh">一句话里中英混着说真的行吗？</span><span lang="en">Does mixing Chinese and English in one sentence really work?</span></summary>
+      <p><span lang="zh">这是 Friday 存在的理由。识别语言总是指定（默认中文，也可选英文），英文句子依然写成英文。50 条“一句中文接一句英文”的录音里没有一句被翻译或丢掉。注意：像 cloud、codec 这类词会被改写成 Claude、Codex。</span><span lang="en">It's why Friday exists. The language is always set (Chinese unless you choose English), and English sentences stay English. In 50 "one sentence Chinese, one sentence English" recordings, none was translated or dropped. Note that words like "cloud" and "codec" get rewritten to "Claude" and "Codex".</span></p></details>
+    <details><summary><span lang="zh">要钱吗？</span><span lang="en">What does it cost?</span></summary>
+      <p><span lang="zh">免费，MIT 开源，没有订阅。</span><span lang="en">Nothing. Free and MIT licensed, no subscription.</span></p></details>
+    <details><summary><span lang="zh">为什么第一次打开提示“无法验证”？</span><span lang="en">Why does macOS say it can't verify Friday?</span></summary>
+      <p><span lang="zh">目前的安装包还没有签名。按<a href="#install">安装步骤</a>在“隐私与安全性”里点“仍要打开”即可。</span><span lang="en">Current builds aren't signed yet. Follow the <a href="#install">install steps</a> and click Open Anyway in Privacy &amp; Security.</span></p></details>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <p><a href="https://github.com/FlyingFSR/friday">github.com/FlyingFSR/friday</a></p>
+    <p><span lang="zh"><a href="https://github.com/FlyingFSR/friday/blob/main/LICENSE">MIT 许可证</a> © Friday Mac contributors。识别模型 Qwen3-ASR 1.7B 为 Apache 2.0（阿里通义千问团队）。</span><span lang="en"><a href="https://github.com/FlyingFSR/friday/blob/main/LICENSE">MIT License</a> © Friday Mac contributors. The Qwen3-ASR 1.7B model is Apache 2.0 (Alibaba Qwen team).</span></p>
+    <p class="fine"><span lang="zh">本站没有统计、没有 Cookie、不加载任何外部资源。你选的语言只保存在你自己的浏览器里（localStorage），不会发给任何人。</span><span lang="en">This site has no analytics, no cookies, and loads nothing from other servers. Your language choice is remembered only in your own browser (localStorage) and is never sent anywhere.</span></p>
+  </div>
+</footer>
+<script>
+(function(){var b=document.getElementById('lang'),h=document.documentElement;
+var T={zh:'Friday · 中英混说的本地 Mac 语音输入',en:'Friday · On-device Mac dictation for Chinese + English'};
+function set(l,save){h.setAttribute('data-lang',l);h.lang=l==='zh'?'zh-CN':'en';document.title=T[l];
+b.setAttribute('aria-label',l==='zh'?'Switch to English':'切换到中文');if(save){try{localStorage.setItem('friday-lang',l)}catch(e){}}}
+set(h.getAttribute('data-lang'),false);
+b.addEventListener('click',function(){set(h.getAttribute('data-lang')==='zh'?'en':'zh',true)});})();
+</script>
+</body>
+</html>
