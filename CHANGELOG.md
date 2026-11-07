@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.2 - 2026-11-07
 
 - **New app icon**: a two-tone sound wave (cream and blue on navy) replaces the
   thin microphone, and it now sits on Apple's icon grid so it is the same size
