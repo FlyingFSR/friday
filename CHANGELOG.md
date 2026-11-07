@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- **New app icon**: a two-tone sound wave (cream and blue on navy) replaces the
+  thin microphone, and it now sits on Apple's icon grid so it is the same size
+  as other Dock icons.
+- **New recording bubble**: a compact green pill with a pulsing dot, a live
+  waveform of the last second of mic level, and a timer, followed by
+  "Transcribing..." and "Done". It follows light and dark mode (mint in light,
+  deep green in dark).
+
 ## 0.5.1 - 2026-11-07
 
 - **New push-to-talk choice: "Right Command or Right Control".** Either key

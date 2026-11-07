@@ -9,13 +9,14 @@ final class HUDWindowController {
 
   init() {
     let panel = NSPanel(
-      contentRect: NSRect(x: 0, y: 0, width: 280, height: 96),
+      contentRect: NSRect(x: 0, y: 0, width: 160, height: 34),
       styleMask: [.nonactivatingPanel, .borderless],
       backing: .buffered,
       defer: true
     )
     panel.isReleasedWhenClosed = false
-    panel.hasShadow = false
+    // The window shadow follows the pill's opaque pixels, so it hugs the rounded shape.
+    panel.hasShadow = true
     panel.level = .floating
     panel.backgroundColor = .clear
     panel.isOpaque = false
@@ -26,9 +27,6 @@ final class HUDWindowController {
     let hostingView = NSHostingView(rootView: HUDView(model: viewModel))
     hostingView.wantsLayer = true
     hostingView.layer?.backgroundColor = NSColor.clear.cgColor
-    hostingView.layer?.cornerRadius = 16
-    hostingView.layer?.cornerCurve = .continuous
-    hostingView.layer?.masksToBounds = true
     panel.contentView = hostingView
 
     self.panel = panel
@@ -41,6 +39,9 @@ final class HUDWindowController {
     duration: TimeInterval?,
     showsCompletionCheck: Bool = false
   ) {
+    if state == .recording, viewModel.state != .recording {
+      viewModel.resetLevels()
+    }
     viewModel.state = state
     viewModel.message = message
     viewModel.duration = duration
@@ -56,7 +57,7 @@ final class HUDWindowController {
   }
 
   func update(level: Float) {
-    viewModel.level = level
+    viewModel.push(level: level)
   }
 
   func hide() {
@@ -67,8 +68,8 @@ final class HUDWindowController {
   private func resizePanelToFitContent() {
     hostingView.layoutSubtreeIfNeeded()
     let fitting = hostingView.fittingSize
-    let targetWidth = max(280, ceil(fitting.width))
-    let targetHeight = max(92, ceil(fitting.height))
+    let targetWidth = ceil(fitting.width)
+    let targetHeight = ceil(fitting.height)
     let current = panel.contentRect(forFrameRect: panel.frame).size
 
     guard abs(current.width - targetWidth) > 0.5 || abs(current.height - targetHeight) > 0.5 else {
@@ -76,6 +77,7 @@ final class HUDWindowController {
     }
 
     panel.setContentSize(NSSize(width: targetWidth, height: targetHeight))
+    panel.invalidateShadow()
   }
 
   private func updatePanelFrameNearCursor() {
