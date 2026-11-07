@@ -53,6 +53,9 @@ enum PushToTalkKey: String, Codable, CaseIterable, Identifiable {
   case rightOption = "right_option"
   case leftOption = "left_option"
   case rightControl = "right_control"
+  // For switching between the built-in Mac keyboard (has Right Command) and a
+  // PC-style external keyboard (has Right Control instead): either key works.
+  case rightCommandOrControl = "right_command_or_control"
 
   var id: String { rawValue }
 
@@ -68,38 +71,43 @@ enum PushToTalkKey: String, Codable, CaseIterable, Identifiable {
       return "Left Option"
     case .rightControl:
       return "Right Control"
+    case .rightCommandOrControl:
+      return "Right Command or Right Control"
     }
   }
 
-  // Values match the macOS virtual key constants in HIToolbox/Events.h.
-  var keyCode: Int64 {
+  // Every physical key that counts as this push-to-talk key.
+  var physicalKeys: [PushToTalkPhysicalKey] {
     switch self {
     case .rightCommand:
-      return 0x36
+      return [.rightCommand]
     case .leftCommand:
-      return 0x37
+      return [.leftCommand]
     case .rightOption:
-      return 0x3D
+      return [.rightOption]
     case .leftOption:
-      return 0x3A
+      return [.leftOption]
     case .rightControl:
-      return 0x3E
-    }
-  }
-
-  var modifier: PushToTalkModifier {
-    switch self {
-    case .rightCommand, .leftCommand:
-      return .command
-    case .rightOption, .leftOption:
-      return .option
-    case .rightControl:
-      return .control
+      return [.rightControl]
+    case .rightCommandOrControl:
+      return [.rightCommand, .rightControl]
     }
   }
 }
 
-enum PushToTalkModifier: Equatable {
+struct PushToTalkPhysicalKey: Equatable {
+  // Values match the macOS virtual key constants in HIToolbox/Events.h.
+  let keyCode: Int64
+  let modifier: PushToTalkModifier
+
+  static let rightCommand = PushToTalkPhysicalKey(keyCode: 0x36, modifier: .command)
+  static let leftCommand = PushToTalkPhysicalKey(keyCode: 0x37, modifier: .command)
+  static let rightOption = PushToTalkPhysicalKey(keyCode: 0x3D, modifier: .option)
+  static let leftOption = PushToTalkPhysicalKey(keyCode: 0x3A, modifier: .option)
+  static let rightControl = PushToTalkPhysicalKey(keyCode: 0x3E, modifier: .control)
+}
+
+enum PushToTalkModifier: Hashable {
   case command
   case option
   case control

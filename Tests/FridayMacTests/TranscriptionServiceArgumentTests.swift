@@ -11,11 +11,11 @@ struct TranscriptionServiceArgumentTests {
 
   @Test
   func hotWordsMatchEvaluatedContext() {
-    // The exact context string scored in docs/qwen3-asr-eval-2026-10.md and the Swift port
-    // parity runs; changing it invalidates those results.
+    // The context string scored in docs/qwen3-asr-eval-2026-10.md and the Swift port parity runs,
+    // plus "Grok Grokbot xAI X quietsea" added afterwards (not re-scored yet).
     #expect(
       TranscriptionService.hotWords ==
-        "Friday Codex Claude Fable relay Sol ChatGPT OpenAI DeepSeek Qwen 通义千问 Haiku Whisper whisper.cpp " +
+        "Friday Codex Claude Fable relay Sol ChatGPT OpenAI DeepSeek Qwen 通义千问 Haiku Grok Grokbot xAI X quietsea Whisper whisper.cpp " +
         "macOS Swift Git VAD React component system prompt pull request voice input flow"
     )
   }

@@ -11,7 +11,8 @@ final class HotkeyService {
   private var eventTap: CFMachPort?
   private var runLoopSource: CFRunLoopSource?
   private var globalMonitor: Any?
-  private var isPressed = false
+  // keyCode of the physical key currently holding push-to-talk down, if any.
+  private var pressedKeyCode: Int64?
   private(set) var selectedHotkey: PushToTalkKey = .rightCommand
 
   var onPress: (() -> Void)?
@@ -38,7 +39,7 @@ final class HotkeyService {
       guard let self else { return }
       self.handleFlagsChanged(
         keyCode: Int64(event.keyCode),
-        modifierIsActive: self.modifierIsActive(in: event.modifierFlags)
+        activeModifiers: Self.activeModifiers(in: event.modifierFlags)
       )
     }
 
@@ -62,7 +63,7 @@ final class HotkeyService {
       NSEvent.removeMonitor(globalMonitor)
       self.globalMonitor = nil
     }
-    isPressed = false
+    pressedKeyCode = nil
   }
 
   var isRunning: Bool {
@@ -74,8 +75,8 @@ final class HotkeyService {
       return
     }
 
-    if isPressed {
-      isPressed = false
+    if pressedKeyCode != nil {
+      pressedKeyCode = nil
       DispatchQueue.main.async { [weak self] in
         self?.onRelease?()
       }
@@ -97,7 +98,7 @@ final class HotkeyService {
 
     handleFlagsChanged(
       keyCode: event.getIntegerValueField(.keyboardEventKeycode),
-      modifierIsActive: modifierIsActive(in: event.flags)
+      activeModifiers: Self.activeModifiers(in: event.flags)
     )
 
     return Unmanaged.passUnretained(event)
@@ -125,20 +126,20 @@ final class HotkeyService {
     )
   }
 
-  private func handleFlagsChanged(keyCode: Int64, modifierIsActive: Bool) {
+  private func handleFlagsChanged(keyCode: Int64, activeModifiers: Set<PushToTalkModifier>) {
     switch Self.transition(
       for: selectedHotkey,
       keyCode: keyCode,
-      modifierIsActive: modifierIsActive,
-      wasPressed: isPressed
+      activeModifiers: activeModifiers,
+      pressedKeyCode: pressedKeyCode
     ) {
     case .pressed:
-      isPressed = true
+      pressedKeyCode = keyCode
       DispatchQueue.main.async { [weak self] in
         self?.onPress?()
       }
     case .released:
-      isPressed = false
+      pressedKeyCode = nil
       DispatchQueue.main.async { [weak self] in
         self?.onRelease?()
       }
@@ -150,39 +151,34 @@ final class HotkeyService {
   static func transition(
     for hotkey: PushToTalkKey,
     keyCode: Int64,
-    modifierIsActive: Bool,
-    wasPressed: Bool
+    activeModifiers: Set<PushToTalkModifier>,
+    pressedKeyCode: Int64?
   ) -> Transition? {
-    guard keyCode == hotkey.keyCode else {
+    if let pressedKeyCode {
+      // flagsChanged is emitted for the held physical key's transition.
+      // Release even if the same modifier on the other side is still held;
+      // ignore the other accepted key while one is already holding.
+      return keyCode == pressedKeyCode ? .released : nil
+    }
+    guard let key = hotkey.physicalKeys.first(where: { $0.keyCode == keyCode }) else {
       return nil
     }
-    if wasPressed {
-      // flagsChanged is emitted for the selected physical key's transition.
-      // Release even if the same modifier on the other side is still held.
-      return .released
-    }
-    return modifierIsActive ? .pressed : nil
+    return activeModifiers.contains(key.modifier) ? .pressed : nil
   }
 
-  private func modifierIsActive(in flags: CGEventFlags) -> Bool {
-    switch selectedHotkey.modifier {
-    case .command:
-      return flags.contains(.maskCommand)
-    case .option:
-      return flags.contains(.maskAlternate)
-    case .control:
-      return flags.contains(.maskControl)
-    }
+  private static func activeModifiers(in flags: CGEventFlags) -> Set<PushToTalkModifier> {
+    var modifiers: Set<PushToTalkModifier> = []
+    if flags.contains(.maskCommand) { modifiers.insert(.command) }
+    if flags.contains(.maskAlternate) { modifiers.insert(.option) }
+    if flags.contains(.maskControl) { modifiers.insert(.control) }
+    return modifiers
   }
 
-  private func modifierIsActive(in flags: NSEvent.ModifierFlags) -> Bool {
-    switch selectedHotkey.modifier {
-    case .command:
-      return flags.contains(.command)
-    case .option:
-      return flags.contains(.option)
-    case .control:
-      return flags.contains(.control)
-    }
+  private static func activeModifiers(in flags: NSEvent.ModifierFlags) -> Set<PushToTalkModifier> {
+    var modifiers: Set<PushToTalkModifier> = []
+    if flags.contains(.command) { modifiers.insert(.command) }
+    if flags.contains(.option) { modifiers.insert(.option) }
+    if flags.contains(.control) { modifiers.insert(.control) }
+    return modifiers
   }
 }

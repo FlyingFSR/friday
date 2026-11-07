@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.1 - 2026-11-07
+
+- **New push-to-talk choice: "Right Command or Right Control".** Either key
+  starts dictation, so you can switch between a Mac keyboard and a PC-style
+  external keyboard (which has Right Control but no Right Command) without
+  changing the setting. While one key is held, the other is ignored; only
+  releasing the key that started the recording ends it. The single-key choices
+  are unchanged, and Right Command is still the default.
+- The built-in hot words now also include Grok, Grokbot, xAI, X and quietsea,
+  and "quiet sea" / "quiet c" are joined back into "quietsea". These have not
+  yet been re-scored on the evaluation recordings.
+
 ## 0.5.0 - 2026-10-15
 
 ### Speech engine

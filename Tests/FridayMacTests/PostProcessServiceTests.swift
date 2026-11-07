@@ -372,6 +372,16 @@ struct PostProcessServiceTests {
   }
 
   @Test
+  func cleanupJoinsSplitQuietsea() {
+    #expect(service.cleanup("我是 quiet sea", mode: .none) == "我是 quietsea")
+    #expect(service.cleanup("Quiet Sea 和 quiet c 和 Quiet-C 都是我", mode: .none) == "quietsea 和 quietsea 和 quietsea 都是我")
+    #expect(service.cleanup("用quiet sea的账号登录", mode: .smart) == "用quietsea的账号登录")
+    #expect(service.cleanup("quietsea 不变", mode: .none) == "quietsea 不变")
+    // Ordinary words that merely start the same way stay untouched.
+    #expect(service.cleanup("quiet seas and quiet cats", mode: .none) == "quiet seas and quiet cats")
+  }
+
+  @Test
   func cleanupKeepsOrdinaryWordsNearReadAloudListRules() {
     #expect(service.cleanup("我同意他的看法，这个人很质朴", mode: .none) == "我同意他的看法，这个人很质朴")
     #expect(service.cleanup("the Dalai Lama visited", mode: .none) == "the Dalai Lama visited")

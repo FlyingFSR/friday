@@ -11,7 +11,7 @@ final class TranscriptionService {
   /// without causing translation; they can occasionally pull a similar-sounding word toward a hot
   /// word (Cursor -> Claude once in 41 recordings).
   static let hotWords =
-    "Friday Codex Claude Fable relay Sol ChatGPT OpenAI DeepSeek Qwen 通义千问 Haiku Whisper whisper.cpp " +
+    "Friday Codex Claude Fable relay Sol ChatGPT OpenAI DeepSeek Qwen 通义千问 Haiku Grok Grokbot xAI X quietsea Whisper whisper.cpp " +
     "macOS Swift Git VAD React component system prompt pull request voice input flow"
 
   private static let blankAudioMarker = "[BLANK_AUDIO]"

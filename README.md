@@ -42,8 +42,9 @@ leaving your Mac.
   [Known Limitations](#known-limitations).
 - **Fully on-device** — transcription by Qwen3-ASR inside the app; audio never leaves your machine.
 - **Configurable push-to-talk** — choose Right/Left Command, Right/Left Option,
-  or Right Control; hold to record and release to transcribe. Right Command
-  remains the default.
+  Right Control, or "Right Command or Right Control" (either key works, handy
+  when you switch between a Mac keyboard and a PC keyboard); hold to record and
+  release to transcribe. Right Command remains the default.
 - **Paste anywhere** — text is inserted at your cursor, with clipboard restore afterward.
 - **Secure-input aware** — automatically refuses to paste into password fields and other protected contexts.
 - **First-run onboarding** — guided setup for permissions and model download.

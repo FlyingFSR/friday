@@ -148,6 +148,9 @@ final class PostProcessService {
       ("(?<![A-Za-z0-9])mini[\\s-]*max(?![A-Za-z0-9])", "MiniMax"),
       ("(?<![A-Za-z0-9])mid[\\s-]*journey(?![A-Za-z0-9])", "Midjourney"),
       ("(?<![A-Za-z0-9])glm(?![A-Za-z0-9])", "GLM"),
+      // The user's own name, written lowercase as one word. Qwen3-ASR splits it into
+      // "quiet sea" (most of the time) or "quiet c" (2026-11 dictation test).
+      ("(?<![A-Za-z0-9])quiet[\\s-]*(?:sea|c)(?![A-Za-z0-9])", "quietsea"),
       // "GPT5" / "gpt 4o" → "GPT-5" / "GPT-4o", the official hyphenated spelling.
       ("(?<![A-Za-z0-9])(?:gpt|gbt)[\\s-]*(?=\\d)", "GPT-"),
       // Qwen3-ASR writes the version as a Chinese numeral ("GPT五"). Not before a measure
