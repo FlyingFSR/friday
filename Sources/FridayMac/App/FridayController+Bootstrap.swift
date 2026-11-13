@@ -23,6 +23,7 @@ extension FridayController {
           self?.startPermissionPolling(duration: 5)
           self?.updateOnboardingRequirement()
           self?.statusBarController?.ensureVisible()
+          await self?.syncAutoStartWithSystem()
         }
       }
     }
@@ -30,6 +31,7 @@ extension FridayController {
     Task {
       settings = await settingsStore.load()
       hotkeyService.setSelectedHotkey(settings.pushToTalkKey)
+      await syncAutoStartWithSystem()
       await migrateAwayFromRetiredModelsIfNeeded()
       cleanupStaleArtifactsOnBootstrap()
       logRuntimeVersions()

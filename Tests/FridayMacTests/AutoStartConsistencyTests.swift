@@ -38,6 +38,68 @@ struct AutoStartConsistencyTests {
     #expect(controller.settings.autoStart == false)
   }
 
+  @Test
+  func savedSettingFollowsSystemWhenUserTurnedItOffInSystemSettings() async throws {
+    let settingsStore = AutoStartSettingsStore(initialAutoStart: true)
+    let autoLaunch = AutoStartMockAutoLaunchService()
+    autoLaunch.state = .disabled
+
+    let controller = makeController(settingsStore: settingsStore, autoLaunchService: autoLaunch)
+    controller.settings = settingsStore.current
+
+    await controller.syncAutoStartWithSystem()
+
+    #expect(settingsStore.current.autoStart == false)
+    #expect(controller.settings.autoStart == false)
+  }
+
+  @Test
+  func syncLeavesSettingAloneWhenSystemStateIsUnknown() async throws {
+    let settingsStore = AutoStartSettingsStore(initialAutoStart: true)
+    let autoLaunch = AutoStartMockAutoLaunchService()
+    autoLaunch.state = .unknown
+
+    let controller = makeController(settingsStore: settingsStore, autoLaunchService: autoLaunch)
+    controller.settings = settingsStore.current
+
+    await controller.syncAutoStartWithSystem()
+
+    #expect(settingsStore.current.autoStart == true)
+  }
+
+  @Test
+  func enablingThatNeedsApprovalOpensLoginItemsAndStaysOff() async throws {
+    let settingsStore = AutoStartSettingsStore(initialAutoStart: false)
+    let autoLaunch = AutoStartMockAutoLaunchService()
+    autoLaunch.state = .requiresApproval
+    autoLaunch.error = FridayError.modelDownloadFailed("needs approval")
+
+    let controller = makeController(settingsStore: settingsStore, autoLaunchService: autoLaunch)
+    controller.settings = settingsStore.current
+
+    controller.setAutoStart(true)
+    try await Task.sleep(nanoseconds: 200_000_000)
+
+    #expect(autoLaunch.openedLoginItemsSettings)
+    #expect(settingsStore.current.autoStart == false)
+    #expect(controller.statusMessage.contains("Login Items"))
+  }
+
+  @Test
+  func failureIsShownInStatusMessage() async throws {
+    let settingsStore = AutoStartSettingsStore(initialAutoStart: false)
+    let autoLaunch = AutoStartMockAutoLaunchService()
+    autoLaunch.error = FridayError.modelDownloadFailed("forced failure")
+
+    let controller = makeController(settingsStore: settingsStore, autoLaunchService: autoLaunch)
+    controller.settings = settingsStore.current
+
+    controller.setAutoStart(true)
+    try await Task.sleep(nanoseconds: 200_000_000)
+
+    #expect(controller.statusMessage.hasPrefix("Couldn't change Start at Login"))
+  }
+
   private func makeController(
     settingsStore: AutoStartSettingsStore,
     autoLaunchService: AutoStartMockAutoLaunchService
@@ -83,6 +145,8 @@ private final class AutoStartSettingsStore: SettingsStoreControlling {
 private final class AutoStartMockAutoLaunchService: AutoLaunchServicing {
   var callCount = 0
   var error: Error?
+  var state: AutoLaunchSystemState = .unknown
+  var openedLoginItemsSettings = false
 
   func setEnabled(_ enabled: Bool) throws {
     callCount += 1
@@ -90,6 +154,10 @@ private final class AutoStartMockAutoLaunchService: AutoLaunchServicing {
       throw error
     }
   }
+
+  func systemState() -> AutoLaunchSystemState { state }
+
+  func openLoginItemsSettings() { openedLoginItemsSettings = true }
 }
 
 private final class AutoStartMockPermissionService: PermissionServicing {

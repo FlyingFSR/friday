@@ -1,27 +1,88 @@
 import SwiftUI
 
 final class HUDViewModel: ObservableObject {
-  /// How many recent mic levels the recording waveform shows (one per meter tick, ~60 ms each).
-  static let waveformLength = 18
-
   @Published var state: PipelineState = .idle
   @Published var message: String = "Ready"
   @Published var duration: TimeInterval?
   @Published var level: Float = 0
-  @Published var levels: [Float] = Array(repeating: 0, count: HUDViewModel.waveformLength)
+  @Published var levels: [Float] = []
   @Published var showsCompletionCheck: Bool = false
 
   func push(level: Float) {
     self.level = level
     var next = levels
-    next.removeFirst()
     next.append(level)
+    if next.count > HUDWaveformShaper.historyLength {
+      next.removeFirst(next.count - HUDWaveformShaper.historyLength)
+    }
     levels = next
   }
 
   func resetLevels() {
     level = 0
-    levels = Array(repeating: 0, count: Self.waveformLength)
+    levels = []
+  }
+}
+
+/// Turns recent mic levels into waveform bar heights.
+///
+/// Steady speech sits in a narrow loudness band, so bars driven by absolute level all end up about
+/// the same height. Each level is instead compared with the typical level of the speaker's recent
+/// speech, then laid out symmetrically: the newest sound is in the middle and older sound spreads
+/// outward. Silence is left out of that comparison; otherwise the first words after a pause all
+/// look far louder than "normal" and every bar fills up.
+enum HUDWaveformShaper {
+  static let barCount = 19
+  /// About 2.9 s of history at one meter tick per ~60 ms.
+  static let historyLength = 48
+
+  private static let center = (barCount - 1) / 2
+  /// Levels below this are treated as room noise, not speech (-42 dB on the meter's -60…0 scale).
+  private static let speechGate: Float = 0.3
+  /// Height of a bar at the speaker's typical level. Louder sounds rise from here, softer ones fall.
+  private static let typicalHeight: Float = 0.42
+  private static let contrast: Float = 1.6
+  /// Smallest loudness spread to stretch over the bars, so near-constant sound stays calm.
+  private static let minimumSpread: Float = 0.25
+
+  /// Bar heights from 0 to 1, in left-to-right order. Newest level is `history.last`.
+  static func heights(history: [Float]) -> [Double] {
+    let speech = history.filter { $0 >= speechGate }.sorted()
+    guard !speech.isEmpty else {
+      return Array(repeating: 0, count: barCount)
+    }
+
+    let typical = percentile(0.5, of: speech)
+    let spread = max(percentile(0.9, of: speech) - percentile(0.1, of: speech), minimumSpread)
+    // Near 0 when the loudest recent sound is only just above room noise.
+    let presence = clamped((percentile(0.95, of: history.sorted()) - speechGate) / 0.25)
+
+    return (0..<barCount).map { index in
+      let distance = abs(index - center)
+      guard distance < history.count else {
+        return 0
+      }
+      let level = history[history.count - 1 - distance]
+      guard level >= speechGate else {
+        return 0
+      }
+      let height = clamped(typicalHeight + (level - typical) / spread * contrast)
+      return Double(height * presence) * envelope(barIndex: index)
+    }
+  }
+
+  /// 1 at the middle bar, tapering toward both ends.
+  static func envelope(barIndex: Int) -> Double {
+    let distance = Double(abs(barIndex - center))
+    return pow(cos(distance / Double(center + 1) * .pi / 2), 0.8)
+  }
+
+  private static func percentile(_ fraction: Double, of sorted: [Float]) -> Float {
+    sorted[Int(Double(sorted.count - 1) * fraction)]
+  }
+
+  private static func clamped(_ value: Float) -> Float {
+    max(0, min(1, value))
   }
 }
 
@@ -162,27 +223,26 @@ private struct Spinner: View {
   }
 }
 
-/// Recent mic levels, oldest on the left, newest entering on the right.
+/// Live waveform: newest sound in the middle, spreading out to both sides and fading at the ends.
 private struct Waveform: View {
   let levels: [Float]
   let color: Color
 
   var body: some View {
+    let heights = HUDWaveformShaper.heights(history: levels)
+
     HStack(alignment: .center, spacing: HUDSize.of(2)) {
-      ForEach(Array(levels.enumerated()), id: \.offset) { _, level in
+      ForEach(heights.indices, id: \.self) { index in
         Capsule()
           .fill(color)
-          .frame(width: HUDSize.of(2.5), height: Self.barHeight(for: level))
+          .frame(
+            width: HUDSize.of(2.5),
+            height: HUDSize.of(3) + CGFloat(heights[index]) * HUDSize.of(13)
+          )
+          .opacity(0.35 + 0.65 * HUDWaveformShaper.envelope(barIndex: index))
       }
     }
     .frame(height: HUDSize.of(16))
-    .animation(.linear(duration: 0.06), value: levels)
-  }
-
-  /// Speech sits roughly at 0.4–0.7 on the meter's linear -60…0 dB scale; a mild curve keeps
-  /// room noise low and lets louder syllables reach the top.
-  static func barHeight(for level: Float) -> CGFloat {
-    let shaped = pow(Double(max(0, min(1, level))), 1.5)
-    return HUDSize.of(3) + CGFloat(shaped) * HUDSize.of(13)
+    .animation(.linear(duration: 0.07), value: heights)
   }
 }

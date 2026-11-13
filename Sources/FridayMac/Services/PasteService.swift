@@ -3,6 +3,11 @@ import Foundation
 import ApplicationServices
 
 final class PasteService {
+  /// Marker from the nspasteboard.org convention: clipboard history tools (Maccy, Paste, Raycast,
+  /// Alfred, ...) skip anything carrying it. Friday only borrows the clipboard for a moment to
+  /// paste, so neither the dictated text nor the user's restored content should land in history.
+  static let transientMarker = NSPasteboard.PasteboardType("org.nspasteboard.TransientType")
+
   private var activeRestoreToken: UUID?
 
   struct PasteboardPayload {
@@ -20,7 +25,7 @@ final class PasteService {
     let restoreToken = UUID()
     activeRestoreToken = restoreToken
 
-    try copyToClipboard(text)
+    try writeTransient(text, to: pasteboard)
     let changeCountAfterInjection = pasteboard.changeCount
 
     try sendCommandV()
@@ -50,6 +55,21 @@ final class PasteService {
     let pasteboard = NSPasteboard.general
     pasteboard.clearContents()
     guard pasteboard.setString(text, forType: .string) else {
+      throw FridayError.pasteFailed
+    }
+  }
+
+  /// Writes text that is only on the clipboard long enough to be pasted. Unlike `copyToClipboard`
+  /// (the fallback where the user is meant to paste it themselves), it is marked so clipboard
+  /// history tools do not record it.
+  func writeTransient(_ text: String, to pasteboard: NSPasteboard) throws {
+    pasteboard.clearContents()
+    let item = NSPasteboardItem()
+    guard
+      item.setString(text, forType: .string),
+      item.setData(Data(), forType: Self.transientMarker),
+      pasteboard.writeObjects([item])
+    else {
       throw FridayError.pasteFailed
     }
   }
@@ -100,6 +120,9 @@ final class PasteService {
       for payload in payloads {
         item.setData(payload.data, forType: payload.type)
       }
+      // The user's own content was already recorded when they copied it; putting it back is not
+      // a new copy, so history tools should not list it again.
+      item.setData(Data(), forType: Self.transientMarker)
       return item
     }
 

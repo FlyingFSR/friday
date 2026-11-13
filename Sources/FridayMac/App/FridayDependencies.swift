@@ -53,6 +53,13 @@ protocol PasteServicing: AnyObject {
 
 protocol AutoLaunchServicing: AnyObject {
   func setEnabled(_ enabled: Bool) throws
+  func systemState() -> AutoLaunchSystemState
+  func openLoginItemsSettings()
+}
+
+extension AutoLaunchServicing {
+  func systemState() -> AutoLaunchSystemState { .unknown }
+  func openLoginItemsSettings() {}
 }
 
 protocol ModelManaging: AnyObject {

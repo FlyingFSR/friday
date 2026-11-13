@@ -3,11 +3,12 @@ import Combine
 import Foundation
 
 @MainActor
-final class StatusBarController: NSObject {
+final class StatusBarController: NSObject, NSMenuDelegate {
   private var statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
   private weak var controller: FridayController?
   private var cancellables = Set<AnyCancellable>()
   private var healingTimer: Timer?
+  private var startAtLoginItem: NSMenuItem?
   private var rebuildCount = 0
   private let maxRebuildCount = 3
 
@@ -17,6 +18,7 @@ final class StatusBarController: NSObject {
 
     configureStatusItem()
     bindPipelineState()
+    bindSettings()
     startHealingTimer()
   }
 
@@ -112,15 +114,45 @@ final class StatusBarController: NSObject {
     let openComparison = NSMenuItem(title: "Model Settings", action: #selector(openSetupAssistant), keyEquivalent: "")
     openComparison.target = self
 
+    let startAtLogin = NSMenuItem(title: "Start at Login", action: #selector(toggleStartAtLogin), keyEquivalent: "")
+    startAtLogin.target = self
+    startAtLogin.state = (controller?.settings.autoStart ?? false) ? .on : .off
+    startAtLoginItem = startAtLogin
+
     let quitItem = NSMenuItem(title: "Quit Friday", action: #selector(quitFriday), keyEquivalent: "q")
     quitItem.target = self
 
     menu.addItem(openSetup)
     menu.addItem(openComparison)
     menu.addItem(.separator())
+    menu.addItem(startAtLogin)
+    menu.addItem(.separator())
     menu.addItem(quitItem)
 
+    menu.delegate = self
     statusItem.menu = menu
+  }
+
+  /// Re-reads the login item from macOS each time the menu opens, so the checkmark reflects a
+  /// change the user made in System Settings > Login Items since Friday last looked.
+  func menuNeedsUpdate(_ menu: NSMenu) {
+    guard let controller else {
+      return
+    }
+    Task { @MainActor in
+      await controller.syncAutoStartWithSystem()
+    }
+  }
+
+  private func bindSettings() {
+    controller?.$settings
+      .map(\.autoStart)
+      .removeDuplicates()
+      .receive(on: RunLoop.main)
+      .sink { [weak self] enabled in
+        self?.startAtLoginItem?.state = enabled ? .on : .off
+      }
+      .store(in: &cancellables)
   }
 
   private func bindPipelineState() {
@@ -174,6 +206,14 @@ final class StatusBarController: NSObject {
   @objc
   private func openSetupAssistant() {
     controller?.openSetupAssistant()
+  }
+
+  @objc
+  private func toggleStartAtLogin() {
+    guard let controller else {
+      return
+    }
+    controller.setAutoStart(!controller.settings.autoStart)
   }
 
   @objc

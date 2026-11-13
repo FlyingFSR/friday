@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#26354d"/>
+      <stop offset="0" stop-color="#1d293b"/>
       <stop offset="1" stop-color="#141c2a"/>
     </linearGradient>
     <linearGradient id="cream" x1="0" y1="0" x2="0" y2="1">
@@ -13,7 +13,7 @@
       <stop offset="1" stop-color="#5f87f2"/>
     </linearGradient>
     <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffffff" stop-opacity=".10"/>
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".04"/>
       <stop offset=".5" stop-color="#ffffff" stop-opacity="0"/>
     </linearGradient>
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
@@ -23,14 +23,16 @@
       <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000" flood-opacity=".28"/>
     </filter>
   </defs>
+  <!-- Artwork is 10% over the 824 px macOS grid: at exactly 824 it read smaller than its Dock neighbors. -->
+  <g transform="translate(512 512) scale(1.1) translate(-512 -512)">
   <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)" filter="url(#shadow)"/>
   <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#sheen)"/>
-  <rect x="101.5" y="101.5" width="821" height="821" rx="183.5" fill="none" stroke="#ffffff" stroke-opacity=".09" stroke-width="3"/>
   <g filter="url(#barglow)">
     <rect x="209" y="422" width="78" height="180" rx="39" fill="url(#cream)"/>
     <rect x="341" y="322" width="78" height="380" rx="39" fill="url(#cream)"/>
     <rect x="473" y="252" width="78" height="520" rx="39" fill="url(#cream)"/>
     <rect x="605" y="347" width="78" height="330" rx="39" fill="url(#blue)"/>
     <rect x="737" y="437" width="78" height="150" rx="39" fill="url(#blue)"/>
+  </g>
   </g>
 </svg>

@@ -59,4 +59,34 @@ struct PasteServiceClipboardTests {
 
     #expect(pasteboard.string(forType: .string) == "original")
   }
+
+  @Test
+  func dictatedTextIsMarkedSoClipboardHistoryToolsSkipIt() throws {
+    let pasteboard = makeScratchPasteboard()
+    defer { pasteboard.releaseGlobally() }
+
+    try PasteService().writeTransient("你好 Friday", to: pasteboard)
+
+    #expect(pasteboard.string(forType: .string) == "你好 Friday")
+    #expect(pasteboard.types?.contains(PasteService.transientMarker) == true)
+  }
+
+  @Test
+  func restoredClipboardIsMarkedButKeepsOriginalContent() {
+    let pasteboard = makeScratchPasteboard()
+    defer { pasteboard.releaseGlobally() }
+
+    pasteboard.clearContents()
+    pasteboard.setString("original", forType: .string)
+
+    let service = PasteService()
+    let snapshot = service.captureSnapshot(from: pasteboard)
+    pasteboard.clearContents()
+    pasteboard.setString("TRANSCRIBED", forType: .string)
+
+    service.restore(snapshot, to: pasteboard)
+
+    #expect(pasteboard.string(forType: .string) == "original")
+    #expect(pasteboard.types?.contains(PasteService.transientMarker) == true)
+  }
 }
