@@ -46,8 +46,8 @@ leaving your Mac.
   when you switch between a Mac keyboard and a PC keyboard); hold to record and
   release to transcribe. Right Command remains the default.
 - **Paste anywhere** — text is inserted at your cursor, with clipboard restore
-  afterward. Clipboard history apps that honor the standard "transient" marker
-  (Maccy, Paste, Alfred and others) do not record your dictation.
+  afterward. Clipboard history apps that honor the nspasteboard.org "transient"
+  marker (Maccy does by default) do not record your dictation.
 - **Start at Login** — optional, from the menu bar menu.
 - **Secure-input aware** — automatically refuses to paste into password fields and other protected contexts.
 - **First-run onboarding** — guided setup for permissions and model download.

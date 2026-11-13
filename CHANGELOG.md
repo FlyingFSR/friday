@@ -12,8 +12,8 @@ your words out of clipboard history, and looks better while you talk.
 - **Your dictation stays out of clipboard history.** To paste, Friday borrows
   the clipboard for a split second. That text, and your own clipboard restored
   right after, are now marked as transient, so clipboard managers that honor
-  the convention (Maccy, Paste, Alfred and others) no longer keep a copy, and
-  none ends up in a history that syncs to other devices.
+  the nspasteboard.org convention (Maccy does by default) no longer keep a
+  copy, and none ends up in a history that syncs to other devices.
 - **A livelier waveform.** Your voice now pulses from the center outward, and
   each bar is measured against your own recent speech instead of a fixed
   meter, so the bars follow your syllables instead of maxing out after every
