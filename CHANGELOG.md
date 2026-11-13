@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.5.3 - 2026-11-13
+
+A small release about everyday comfort: Friday is ready when your Mac is, keeps
+your words out of clipboard history, and looks better while you talk.
+
+- **Start at Login.** Turn it on from the menu bar and Friday is waiting the
+  moment you log in, no more "hold the key, nothing happens, oh right". The
+  checkmark stays in step with System Settings > Login Items, and if macOS
+  wants your approval first, Friday takes you straight there.
+- **Your dictation stays out of clipboard history.** To paste, Friday borrows
+  the clipboard for a split second. That text, and your own clipboard restored
+  right after, are now marked as transient, so clipboard managers that honor
+  the convention (Maccy, Paste, Alfred and others) no longer keep a copy, and
+  none ends up in a history that syncs to other devices.
+- **A livelier waveform.** Your voice now pulses from the center outward, and
+  each bar is measured against your own recent speech instead of a fixed
+  meter, so the bars follow your syllables instead of maxing out after every
+  pause.
+- **A bigger app icon.** 10% larger with a cleaner top edge, so it no longer
+  looks undersized next to its Dock neighbors.
+
 ## 0.5.2 - 2026-11-07
 
 - **New app icon**: a two-tone sound wave (cream and blue on navy) replaces the

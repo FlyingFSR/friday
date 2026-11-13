@@ -15,7 +15,7 @@ ICONSET_DIR="$APP_ROOT/Resources/AppIcon.iconset"
 ICON_ICNS="$APP_ROOT/Resources/Friday.icns"
 
 BUNDLE_IDENTIFIER="${FRIDAY_BUNDLE_IDENTIFIER:-com.fw.friday.local}"
-SHORT_VERSION="${FRIDAY_SHORT_VERSION:-0.5.2}"
+SHORT_VERSION="${FRIDAY_SHORT_VERSION:-0.5.3}"
 # MLX loads its Metal shader library from a SwiftPM-style resource bundle inside the
 # app's Resources (see mlx-swift device.cpp, load_swiftpm_library). It must match the
 # MLX core pinned in Package.swift; scripts/fetch-mlx-metallib.sh provides it.

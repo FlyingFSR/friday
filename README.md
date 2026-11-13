@@ -45,7 +45,10 @@ leaving your Mac.
   Right Control, or "Right Command or Right Control" (either key works, handy
   when you switch between a Mac keyboard and a PC keyboard); hold to record and
   release to transcribe. Right Command remains the default.
-- **Paste anywhere** — text is inserted at your cursor, with clipboard restore afterward.
+- **Paste anywhere** — text is inserted at your cursor, with clipboard restore
+  afterward. Clipboard history apps that honor the standard "transient" marker
+  (Maccy, Paste, Alfred and others) do not record your dictation.
+- **Start at Login** — optional, from the menu bar menu.
 - **Secure-input aware** — automatically refuses to paste into password fields and other protected contexts.
 - **First-run onboarding** — guided setup for permissions and model download.
 
@@ -80,7 +83,7 @@ tool:
 3. **Input Monitoring** — to detect the push-to-talk hotkey
 
 Then install the **Qwen3-ASR 1.7B** model, choose a push-to-talk key in
-the menu bar or setup assistant, and try it: hold the selected key, speak,
+the setup assistant, and try it: hold the selected key, speak,
 release.
 
 ## Models
